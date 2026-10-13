@@ -3,7 +3,6 @@ const { exec } = require('child_process');
 const path = require('path');
 const app = express();
 
-// Enable CORS
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -27,14 +26,13 @@ app.post('/api/process', (req, res) => {
     exec(`python3 core_extractor.py "${encodedScript}"`, (error, stdout, stderr) => {
         if (error) {
             console.error(`Exec error: ${error}`);
-            return res.status(500).json({ error: 'Python execution failed: ' + stderr });
+            return res.status(500).json({ error: 'Execution failed: ' + stderr });
         }
         res.json({ success: true, output: stdout });
     });
 });
 
 const PORT = process.env.PORT || 3000;
-// Bind explicitly to 0.0.0.0 so Railway's proxy can route traffic to it
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server successfully running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
