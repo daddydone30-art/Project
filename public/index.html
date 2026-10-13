@@ -118,8 +118,8 @@
     </div>
 
     <script>
-        // --- PASTE YOUR ACTUAL RAILWAY APP URL HERE (without trailing slash) ---
-        const BACKEND_URL = "https://rbxdev.up.railway.app/"; 
+        // Automatically targets the active domain where this app is hosted (Railway)
+        const BACKEND_URL = window.location.origin;
 
         const statusFeed = document.getElementById('statusFeed');
 
@@ -141,11 +141,6 @@
             
             if (!rawPs.includes("Invoke-WebRequest")) {
                 logStatus("Invalid PowerShell script format.", "feed-error");
-                return;
-            }
-
-            if (BACKEND_URL.includes("YOUR_RAILWAY_URL")) {
-                logStatus("Error: Please update BACKEND_URL in index.html to your Railway link!", "feed-error");
                 return;
             }
 
