@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs", "python3", "python3Packages.requests"]
+nixPkgs = ["nodejs", "(python3.withPackages (ps: [ps.requests]))"]
 
 [phases.build]
 cmds = ["npm install"]
