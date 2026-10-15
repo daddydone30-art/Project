@@ -1,10 +1,13 @@
 {
-  "name": "nexus-copier",
+  "name": "project",
   "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "pip install --user requests"
+  },
   "dependencies": {
     "express": "^4.19.2"
-  },
-  "scripts": {
-    "start": "node server.js"
   }
 }
