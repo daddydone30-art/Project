@@ -8,7 +8,13 @@ const PORT = process.env.PORT || 10000;
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Serve static files from the root directory
 app.use(express.static(path.join(__dirname)));
+
+// Explicit route to serve index.html at the root URL
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.post('/api/process', (req, res) => {
     console.log("[API] Hit /api/process endpoint!");
