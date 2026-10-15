@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "postinstall": "pip install --user requests"
+    "postinstall": "pip install requests"
   },
   "dependencies": {
     "express": "^4.19.2"
