@@ -2,27 +2,212 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Nexus Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Panel | Professional Utility</title>
+    <style>
+        :root {
+            --bg-color: #0f1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --accent-color: #58a6ff;
+            --accent-hover: #1f6feb;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --success-color: #2ea043;
+            --error-color: #da3633;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 520px;
+            padding: 32px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .header svg {
+            width: 32px;
+            height: 32px;
+            fill: var(--accent-color);
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+
+        p.subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        textarea {
+            width: 100%;
+            height: 140px;
+            background-color: #0d1117;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            color: #ffffff;
+            font-size: 13px;
+            font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+            resize: vertical;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+
+        button {
+            width: 100%;
+            background-color: var(--accent-color);
+            color: #0d1117;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: #79c0ff;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            background-color: var(--border-color);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        #statusBox {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: none;
+        }
+
+        #statusBox.success {
+            background-color: rgba(46, 160, 67, 0.15);
+            border: 1px solid rgba(46, 160, 67, 0.4);
+            color: #3fb950;
+            display: block;
+        }
+
+        #statusBox.error {
+            background-color: rgba(218, 54, 51, 0.15);
+            border: 1px solid rgba(218, 54, 51, 0.4);
+            color: #f85149;
+            display: block;
+        }
+
+        .footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            padding-top: 16px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Nexus Copier Panel</h1>
-    <textarea id="scriptInput" placeholder="Paste your script here..."></textarea>
-    <button onclick="sendData()">Submit</button>
+
+    <div class="container">
+        <div class="header">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            <div>
+                <h1>Nexus Copier Panel</h1>
+                <p class="subtitle">Secure Telemetry & Script Dispatcher</p>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="scriptInput">PowerShell Script or Payload</label>
+            <textarea id="scriptInput" placeholder="Paste your script content here..."></textarea>
+        </div>
+
+        <button id="submitBtn" onclick="sendData()">Execute & Dispatch</button>
+
+        <div id="statusBox"></div>
+
+        <div class="footer">
+            NexusStudio Infrastructure &copy; 2026 &bull; Secure Channel Active
+        </div>
+    </div>
 
     <script>
         async function sendData() {
-            const scriptText = document.getElementById('scriptInput').value;
-            
+            const scriptText = document.getElementById('scriptInput').value.trim();
+            const btn = document.getElementById('submitBtn');
+            const statusBox = document.getElementById('statusBox');
+
+            statusBox.style.display = 'none';
+            statusBox.className = '';
+
             if (!scriptText) {
-                alert("Please paste a script first!");
+                statusBox.className = 'error';
+                statusBox.innerText = 'Error: Please paste a script payload first.';
                 return;
             }
 
-            // Encode the script to Base64 to match your backend expectation
-            const encodedScript = btoa(scriptText);
+            btn.disabled = true;
+            btn.innerText = 'Processing...';
+
+            const encodedScript = btoa(unescape(encodeURIComponent(scriptText)));
 
             try {
-                const response = await fetch('https://project-nwb2.onrender.com/api/process', {
+                const response = await fetch('/api/process', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -31,11 +216,20 @@
                 });
 
                 const result = await response.json();
-                console.log("Success:", result);
-                alert("Processed successfully and dispatched to Discord!");
+
+                if (response.ok && result.success) {
+                    statusBox.className = 'success';
+                    statusBox.innerText = 'Success! Payload processed and dispatched to Discord webhook.';
+                } else {
+                    statusBox.className = 'error';
+                    statusBox.innerText = `Server Error: ${result.error || result.output || 'Unknown error occurred.'}`;
+                }
             } catch (error) {
-                console.error("Error:", error);
-                alert("Failed to connect to backend server.");
+                statusBox.className = 'error';
+                statusBox.innerText = 'Network Connection Failed: Could not reach backend server.';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Execute & Dispatch';
             }
         }
     </script>
