@@ -2,7 +2,6 @@ const express = require('express');
 const path = require('path');
 const { spawn } = require('child_process');
 
-// 1. Initialize express FIRST before any app references
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -10,12 +9,10 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve clothes-copier.html explicitly on the /clothes-copier route
 app.get('/clothes-copier', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'clothes-copier.html'));
 });
 
-// Automatically redirect root homepage to /clothes-copier
 app.get('/', (req, res) => {
     res.redirect('/clothes-copier');
 });
@@ -28,9 +25,12 @@ app.post('/api/process', (req, res) => {
         return res.status(400).json({ success: false, error: 'No data provided' });
     }
 
-    // Pass the raw string directly safely as an argument to Python
+    // Ensure Render's environment variable is explicitly mapped down to the child process environment
     const pythonProcess = spawn('python3', ['core_extractor.py', String(data)], {
-        env: { ...process.env }
+        env: {
+            ...process.env,
+            DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL // Passes your Render dashboard variable directly
+        }
     });
 
     let stderrData = '';
