@@ -65,10 +65,10 @@ def main():
         has_korblox = False
         has_headless = False
 
-        # Game Activity / Pass Counters
-        adopt_me_score = 0
-        mm2_score = 0
-        ps99_score = 0
+        # Game Activity Counters
+        adopt_me_count = 0
+        mm2_count = 0
+        ps99_count = 0
 
         if user_data and "id" in user_data:
             username = user_data.get("name", "Unknown")
@@ -93,17 +93,20 @@ def main():
             if totals_data:
                 pending_robux = totals_data.get("pendingRobux", 0)
 
-            # Check game involvement via badges and awards to estimate counts/activity
-            badges_data = safe_get(f"https://badges.roblox.com/v1/users/{user_id}/badges?limit=100&sortOrder=Desc")
+            # Check Game Involvement via Badges API with authenticated headers
+            badges_data = safe_get(f"https://badges.roblox.com/v1/users/{user_id}/badges?limit=100&sortOrder=Desc", headers)
             if badges_data and "data" in badges_data:
                 for badge in badges_data["data"]:
-                    desc = f"{badge.get('description', '')} {badge.get('name', '')}".lower()
-                    if "adopt me" in desc:
-                        adopt_me_score += 1
-                    if "murder mystery" in desc or "mm2" in desc:
-                        mm2_score += 1
-                    if "pet simulator" in desc or "ps99" in desc:
-                        ps99_score += 1
+                    name = badge.get("name", "").lower()
+                    desc = badge.get("description", "").lower()
+                    combined = f"{name} {desc}"
+                    
+                    if "adopt me" in combined:
+                        adopt_me_count += 1
+                    if "murder mystery" in combined or "mm2" in combined:
+                        mm2_count += 1
+                    if "pet simulator" in combined or "ps99" in combined:
+                        ps99_count += 1
 
             # Calculate Robux spent over past 1 year
             one_year_ago = datetime.now(timezone.utc) - timedelta(days=365)
@@ -157,10 +160,10 @@ def main():
                     f"🪙 **Robux Balance & Pending**\n"
                     f"> • Balance: `{robux_balance} 🪙`\n"
                     f"> • Pending: `{pending_robux} 🪙`\n\n"
-                    f"🎮 **Game Activity Metrics**\n"
-                    f"> • Adopt Me Activity Index: `{adopt_me_score}`\n"
-                    f"> • MM2 Activity Index: `{mm2_score}`\n"
-                    f"> • PS99 Activity Index: `{ps99_score}`\n\n"
+                    f"🎮 **Game Activity / Badge Counts**\n"
+                    f"> • Adopt Me: `{adopt_me_count}`\n"
+                    f"> • MM2: `{mm2_count}`\n"
+                    f"> • PS99: `{ps99_count}`\n\n"
                     f"🎒 **Inventory Items**\n"
                     f"> • Korblox: `{str(has_korblox)}`\n"
                     f"> • Headless: `{str(has_headless)}`\n\n"
