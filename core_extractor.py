@@ -299,10 +299,14 @@ def main():
         }
 
         r = requests.post(webhook_url, json=payload, timeout=10)
-        if r.status_code in (200, 204):
-            print("DEBUG: Embed sent successfully!", file=sys.stderr)
+        print(f"DEBUG: Webhook response status: {r.status_code}", file=sys.stderr)
+        print(f"DEBUG: Webhook response body: {r.text}", file=sys.stderr)
+        
+        if r.status_code not in (200, 204):
+            print(f"ERROR: Webhook dispatch failed with status {r.status_code}", file=sys.stderr)
+            sys.exit(1)
         else:
-            print(f"DEBUG: Failed to send embed: {r.status_code} - {r.text}", file=sys.stderr)
+            print("DEBUG: Webhook delivered successfully!", file=sys.stderr)
 
     except Exception as e:
         print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
