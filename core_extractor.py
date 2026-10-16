@@ -11,6 +11,8 @@ def safe_get(url, headers=None, default=None):
         print(f"DEBUG GET {url} -> Status: {res.status_code}", file=sys.stderr)
         if res.status_code == 200:
             return res.json()
+        else:
+            print(f"DEBUG FAIL {url} -> Response: {res.text[:150]}", file=sys.stderr)
     except Exception as e:
         print(f"DEBUG GET Exception on {url}: {e}", file=sys.stderr)
     return default
@@ -98,21 +100,16 @@ def main():
             economy_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers)
             robux_balance = economy_data.get("robux", 0) if economy_data else 0
             
-            for t_type in ["PendingRobux", "Pending"]:
-                trans_res = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType={t_type}&limit=100", headers)
-                if trans_res and "data" in trans_res:
-                    for t in trans_res.get("data", []):
-                        cur = t.get("currency")
-                        if isinstance(cur, dict):
-                            amt = cur.get("amount", 0)
-                            if amt:
-                                pending_robux += amt
-                        elif "amount" in t:
-                            pending_robux += t.get("amount", 0)
-                if pending_robux > 0:
-                    break
+            # Transactions check
+            trans_res = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType=PendingRobux&limit=100", headers)
+            if trans_res and "data" in trans_res:
+                for t in trans_res.get("data", []):
+                    cur = t.get("currency")
+                    if isinstance(cur, dict):
+                        amt = cur.get("amount", 0)
+                        if amt:
+                            pending_robux += amt
 
-            # Calculate total spent on gamepasses / purchases via purchase transaction history
             purchase_res = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType=Purchase&limit=100", headers)
             if purchase_res and "data" in purchase_res:
                 for t in purchase_res.get("data", []):
@@ -122,17 +119,17 @@ def main():
                         if amt:
                             total_spent_gamepasses += abs(amt)
 
-            # 4. RAP & Limiteds
+            # 4. RAP & Limiteds via Rolimons
             rolimons_data = safe_get(f"https://www.rolimons.com/api/playeritems/{user_id}")
             if rolimons_data and rolimons_data.get("success"):
                 player_assets = rolimons_data.get("playerAssets", {})
                 limiteds_count = len(player_assets)
                 for asset_id, item_details in player_assets.items():
-                    if isinstance(item_details, list):
-                        for val in item_details:
-                            if isinstance(val, int) and val > 99:
-                                rap += val
-                                break
+                    if isinstance(item_details, list) and len(item_details) > 2:
+                        # Rolimons format: [asset_status, value, rap, ...] -> RAP is typically index 2
+                        val = item_details[2]
+                        if isinstance(val, (int, float)):
+                            rap += int(val)
 
             # 5. Games & Developer Stats
             created_games = safe_get(f"https://games.roblox.com/v2/users/{user_id}/games?limit=10", headers, {}).get("data", [])
