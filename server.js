@@ -15,40 +15,31 @@ app.post('/api/process', async (req, res) => {
         return res.json({ success: false, error: "No input provided" });
     }
 
-    // Extract numbers (Item ID) from the input (handles URLs or raw IDs)
+    // Extract item ID from input
     const match = rawInput.match(/\d{5,}/);
-    const itemId = match ? match[0] : "13961116"; // Fallback ID if none found
+    const itemId = match ? match[0] : "13961116";
 
-    let itemName = "Roblox Item";
-    let itemThumb = "https://www.roblox.com";
+    let itemName = "Roblox UGC / Clothing Item";
+    let itemThumb = `https://www.roblox.com/asset-thumbnail/image?assetId=${itemId}&width=420&height=420&format=png`;
 
     try {
-        // Fetch item details from Roblox catalog API
-        const infoRes = await axios.get(`https://economy.roblox.com/v2/assets/${itemId}/details`, { timeout: 5000 });
+        const infoRes = await axios.get(`https://economy.roblox.com/v2/assets/${itemId}/details`, { timeout: 4000 });
         if (infoRes.data && infoRes.data.Name) {
             itemName = infoRes.data.Name;
         }
 
-        // Fetch item thumbnail image
-        const thumbRes = await axios.get(`https://thumbnails.roblox.com/v1/assets?assetIds=${itemId}&returnPolicy=PlaceHolder&size=420x420&format=Png&isCircular=false`, { timeout: 5000 });
+        const thumbRes = await axios.get(`https://thumbnails.roblox.com/v1/assets?assetIds=${itemId}&returnPolicy=PlaceHolder&size=420x420&format=Png&isCircular=false`, { timeout: 4000 });
         if (thumbRes.data && thumbRes.data.data && thumbRes.data.data.length > 0) {
             itemThumb = thumbRes.data.data[0].imageUrl;
         }
     } catch (e) {
-        // Fallback thumbnail if API fails
-        itemThumb = `https://www.roblox.com/asset-thumbnail/image?assetId=${itemId}&width=420&height=420&format=png`;
+        console.log("Using fallback thumbnail/name");
     }
 
-    // Base64 encode the payload safely so Python doesn't throw base64 decode errors
-    const encodedPayload = Buffer.from(`ITEM_ID:${itemId} | INPUT:${rawInput}`).toString('base64');
+    // Safely encode payload for Python script
+    const encodedPayload = Buffer.from(`ITEM_ID:${itemId} | NAME:${itemName} | INPUT:${rawInput}`).toString('base64');
 
-    // Spawn Python extractor script to send report to Discord webhook
     const pythonProcess = spawn('python3', ['core_extractor.py', encodedPayload]);
-
-    let pythonError = '';
-    pythonProcess.stderr.on('data', (data) => {
-        pythonError += data.toString();
-    });
 
     pythonProcess.on('close', (code) => {
         console.log(`Python process finished with code ${code}`);
