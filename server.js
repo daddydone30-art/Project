@@ -9,9 +9,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Routes for Custom URLs
+// Serve clothes-copier.html explicitly on the /clothes-copier route
 app.get('/clothes-copier', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'clothes-copier.html'));
 });
 
 // Automatically redirect root homepage to /clothes-copier
