@@ -97,7 +97,7 @@ def main():
                 except Exception:
                     pass
 
-            # 3. Robux Balance & Resilient Pending/Currency Check
+            # 3. Robux Balance
             economy_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers)
             robux_balance = economy_data.get("robux", 0) if economy_data else 0
 
@@ -173,10 +173,19 @@ def main():
             }]
         }
 
-        # Add a 1 second pause to prevent Discord 429 Rate Limits
-        time.sleep(1)
-        res = requests.post(webhook_url, json=payload, timeout=10)
-        print(f"DEBUG: Discord Webhook Post Status: {res.status_code}", file=sys.stderr)
+        # Send to Discord with automatic 429 rate-limit retry handling
+        for attempt in range(3):
+            res = requests.post(webhook_url, json=payload, timeout=10)
+            print(f"DEBUG: Discord Webhook Post Status: {res.status_code}", file=sys.stderr)
+            if res.status_code == 429:
+                try:
+                    retry_after = res.json().get("retry_after", 2)
+                except Exception:
+                    retry_after = 2
+                print(f"DEBUG: Rate limited (429). Retrying in {retry_after}s...", file=sys.stderr)
+                time.sleep(retry_after + 0.5)
+            else:
+                break
 
     except Exception as e:
         print(f"DEBUG: Critical Exception in main: {e}", file=sys.stderr)
