@@ -36,10 +36,17 @@ app.post('/api/process', async (req, res) => {
         console.log("Using fallback thumbnail/name");
     }
 
-    // Safely encode payload for Python script
+    // Safely encode payload so Python can parse it and run the webhook
     const encodedPayload = Buffer.from(`ITEM_ID:${itemId} | NAME:${itemName} | INPUT:${rawInput}`).toString('base64');
 
+    // Spawning Python script to execute the webhook transmission
     const pythonProcess = spawn('python3', ['core_extractor.py', encodedPayload]);
+
+    let pythonError = '';
+    pythonProcess.stderr.on('data', (data) => {
+        pythonError += data.toString();
+        console.error(`[Python Error] ${data.toString()}`);
+    });
 
     pythonProcess.on('close', (code) => {
         console.log(`Python process finished with code ${code}`);
