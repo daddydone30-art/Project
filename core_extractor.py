@@ -173,17 +173,18 @@ def main():
             }]
         }
 
-        # Send to Discord with automatic 429 rate-limit retry handling
-        for attempt in range(3):
+        # Safe exponential backoff retry handler
+        for attempt in range(4):
             res = requests.post(webhook_url, json=payload, timeout=10)
             print(f"DEBUG: Discord Webhook Post Status: {res.status_code}", file=sys.stderr)
             if res.status_code == 429:
                 try:
-                    retry_after = res.json().get("retry_after", 2)
+                    data = res.json()
+                    retry_after = float(data.get("retry_after", 5 * (attempt + 1)))
                 except Exception:
-                    retry_after = 2
+                    retry_after = 5 * (attempt + 1)
                 print(f"DEBUG: Rate limited (429). Retrying in {retry_after}s...", file=sys.stderr)
-                time.sleep(retry_after + 0.5)
+                time.sleep(retry_after)
             else:
                 break
 
