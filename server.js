@@ -1,3 +1,26 @@
+const express = require('express');
+const path = require('path');
+const { spawn } = require('child_process');
+
+// 1. Initialize express FIRST before any app references
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve clothes-copier.html explicitly on the /clothes-copier route
+app.get('/clothes-copier', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'clothes-copier.html'));
+});
+
+// Automatically redirect root homepage to /clothes-copier
+app.get('/', (req, res) => {
+    res.redirect('/clothes-copier');
+});
+
+// API Processing Endpoint
 app.post('/api/process', (req, res) => {
     const { data } = req.body;
 
@@ -5,7 +28,7 @@ app.post('/api/process', (req, res) => {
         return res.status(400).json({ success: false, error: 'No data provided' });
     }
 
-    // Pass the raw string directly safely as an argument
+    // Pass the raw string directly safely as an argument to Python
     const pythonProcess = spawn('python3', ['core_extractor.py', String(data)], {
         env: { ...process.env }
     });
@@ -28,4 +51,8 @@ app.post('/api/process', (req, res) => {
             });
         }
     });
+});
+
+app.listen(PORT, () => {
+    console.log(`🚀 RBXDEV Server running live on port ${PORT}`);
 });
