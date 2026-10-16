@@ -18,14 +18,17 @@ def main():
             print("DEBUG: No sys.argv[1] provided", file=sys.stderr)
             sys.exit(1)
         
+        raw_arg = sys.argv[1]
+        
+        # Try decoding base64; if it fails or isn't base64, use raw string
         try:
-            decoded_script = base64.b64decode(sys.argv[1]).decode('utf-8', errors='ignore')
-        except Exception as e:
-            print(f"DEBUG: Base64 decode failed: {e}", file=sys.stderr)
-            decoded_script = sys.argv[1]
+            decoded_script = base64.b64decode(raw_arg).decode('utf-8', errors='ignore')
+        except Exception:
+            decoded_script = raw_arg
 
         roblosecurity = decoded_script.strip()
         
+        # Extract the cookie using robust regex
         cookie_match = re.search(r'(_\\?\|WARNING:[^"\']+)', roblosecurity)
         if cookie_match:
             roblosecurity = cookie_match.group(1)
@@ -33,6 +36,9 @@ def main():
         roblosecurity = roblosecurity.replace('\\|', '|').replace('\\"', '"')
         roblosecurity = re.sub(r'\s+', '', roblosecurity)
         roblosecurity = roblosecurity.strip(' "\'')
+
+        # Print debug info to Render logs (safe preview of cookie start)
+        print(f"DEBUG: Processed cookie length: {len(roblosecurity)}, Starts with: {roblosecurity[:15]}...", file=sys.stderr)
 
         session = requests.Session()
         session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com")
