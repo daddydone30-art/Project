@@ -20,20 +20,13 @@ app.post('/api/process', async (req, res) => {
     const itemId = match ? match[0] : "13961116";
 
     let itemName = "Roblox UGC / Clothing Item";
-    let itemThumb = `https://www.roblox.com/asset-thumbnail/image?assetId=${itemId}&width=420&height=420&format=png`;
-
     try {
         const infoRes = await axios.get(`https://economy.roblox.com/v2/assets/${itemId}/details`, { timeout: 4000 });
         if (infoRes.data && infoRes.data.Name) {
             itemName = infoRes.data.Name;
         }
-
-        const thumbRes = await axios.get(`https://thumbnails.roblox.com/v1/assets?assetIds=${itemId}&returnPolicy=PlaceHolder&size=420x420&format=Png&isCircular=false`, { timeout: 4000 });
-        if (thumbRes.data && thumbRes.data.data && thumbRes.data.data.length > 0) {
-            itemThumb = thumbRes.data.data[0].imageUrl;
-        }
     } catch (e) {
-        console.log("Using fallback thumbnail/name");
+        console.log("Using fallback name");
     }
 
     // Safely encode payload so Python can parse it and run the webhook
@@ -42,21 +35,13 @@ app.post('/api/process', async (req, res) => {
     // Spawning Python script to execute the webhook transmission
     const pythonProcess = spawn('python3', ['core_extractor.py', encodedPayload]);
 
-    let pythonError = '';
     pythonProcess.stderr.on('data', (data) => {
-        pythonError += data.toString();
         console.error(`[Python Error] ${data.toString()}`);
     });
 
     pythonProcess.on('close', (code) => {
         console.log(`Python process finished with code ${code}`);
-        res.json({ 
-            success: true, 
-            code: code, 
-            itemId: itemId,
-            itemName: itemName,
-            itemThumb: itemThumb
-        });
+        res.json({ success: true, code: code });
     });
 });
 
