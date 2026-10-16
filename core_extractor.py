@@ -32,17 +32,19 @@ def main():
             decoded_script = sys.argv[1]
 
         roblosecurity = decoded_script.strip()
-        cookie_match = re.search(r'(_\|WARNING:[^"\']+)', roblosecurity)
+        
+        # FIXED REGEX: Properly matches real Roblox cookies starting with _|WARNING: or _\|WARNING:
+        cookie_match = re.search(r'(_\\?\|WARNING:[^"\']+)', roblosecurity)
         if cookie_match:
             roblosecurity = cookie_match.group(1)
 
+        roblosecurity = roblosecurity.replace('\\|', '|').replace('\\"', '"')
         roblosecurity = re.sub(r'\s+', '', roblosecurity)
-        roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
+        roblosecurity = roblosecurity.strip(' "\'')
 
         session = requests.Session()
         session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com")
         
-        # Enhanced headers to mimic a real desktop browser and bypass automated bot detection
         session.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
             "Accept": "application/json, text/plain, */*",
