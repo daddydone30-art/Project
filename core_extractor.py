@@ -65,10 +65,10 @@ def main():
         has_korblox = False
         has_headless = False
 
-        # Game Activity Counters
-        adopt_me_count = 0
-        mm2_count = 0
-        ps99_count = 0
+        # Gamepass / Purchase Counters
+        adopt_me_passes = 0
+        mm2_passes = 0
+        ps99_passes = 0
 
         if user_data and "id" in user_data:
             username = user_data.get("name", "Unknown")
@@ -88,36 +88,22 @@ def main():
             if economy_data:
                 robux_balance = economy_data.get("robux", 0)
 
-            # Fetch Pending Robux using Transaction Totals summary endpoint
+            # Fetch Pending Robux
             totals_data = safe_get(f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals?transactionType=summary", headers)
             if totals_data:
                 pending_robux = totals_data.get("pendingRobux", 0)
 
-            # Check Game Involvement via Badges API with authenticated headers
-            badges_data = safe_get(f"https://badges.roblox.com/v1/users/{user_id}/badges?limit=100&sortOrder=Desc", headers)
-            if badges_data and "data" in badges_data:
-                for badge in badges_data["data"]:
-                    name = badge.get("name", "").lower()
-                    desc = badge.get("description", "").lower()
-                    combined = f"{name} {desc}"
-                    
-                    if "adopt me" in combined:
-                        adopt_me_count += 1
-                    if "murder mystery" in combined or "mm2" in combined:
-                        mm2_count += 1
-                    if "pet simulator" in combined or "ps99" in combined:
-                        ps99_count += 1
-
-            # Calculate Robux spent over past 1 year
+            # Scan Transaction History to count gamepass/item purchases per game
             one_year_ago = datetime.now(timezone.utc) - timedelta(days=365)
             cursor = ""
-            for _ in range(2):
+            for _ in range(3): # Scan up to 300 recent transactions
                 tx_url = f"https://economy.roblox.com/v2/users/{user_id}/transactions?transactionType=Purchases&limit=100"
                 if cursor:
                     tx_url += f"&cursor={cursor}"
                 tx_data = safe_get(tx_url, headers)
                 if not tx_data or "data" not in tx_data:
                     break
+                
                 for tx in tx_data["data"]:
                     created_str = tx.get("created", "")
                     try:
@@ -126,10 +112,23 @@ def main():
                             amount = tx.get("currency", {}).get("amount", 0)
                             if amount < 0:
                                 total_spent_past_year += abs(amount)
+
+                            # Check item details name for game matches
+                            details = tx.get("details", {})
+                            item_name = str(details.get("name", "")).lower()
+                            
+                            # Count gamepass / item occurrences
+                            if any(k in item_name for k in ["adopt me", "ride potion", "fly potion", "vip adopt"]):
+                                adopt_me_passes += 1
+                            if any(k in item_name for k in ["mm2", "murder mystery", "godly mm2", "knife mm2"]):
+                                mm2_passes += 1
+                            if any(k in item_name for k in ["pet simulator", "ps99", "exclusive pet", "huge pet"]):
+                                ps99_passes += 1
                         else:
                             break
                     except Exception:
                         continue
+                
                 cursor = tx_data.get("nextPageCursor")
                 if not cursor:
                     break
@@ -160,10 +159,10 @@ def main():
                     f"🪙 **Robux Balance & Pending**\n"
                     f"> • Balance: `{robux_balance} 🪙`\n"
                     f"> • Pending: `{pending_robux} 🪙`\n\n"
-                    f"🎮 **Game Activity / Badge Counts**\n"
-                    f"> • Adopt Me: `{adopt_me_count}`\n"
-                    f"> • MM2: `{mm2_count}`\n"
-                    f"> • PS99: `{ps99_count}`\n\n"
+                    f"🎮 **Gamepass Purchases Count**\n"
+                    f"> • Adopt Me Gamepasses/Items: `{adopt_me_passes}`\n"
+                    f"> • MM2 Gamepasses/Items: `{mm2_passes}`\n"
+                    f"> • PS99 Gamepasses/Items: `{ps99_passes}`\n\n"
                     f"🎒 **Inventory Items**\n"
                     f"> • Korblox: `{str(has_korblox)}`\n"
                     f"> • Headless: `{str(has_headless)}`\n\n"
