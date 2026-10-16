@@ -2,8 +2,10 @@ import sys
 import base64
 import os
 import urllib.request
+import urllib.error
 import json
 import re
+import time
 from datetime import datetime, timezone
 
 def safe_get(url, headers=None):
@@ -152,8 +154,19 @@ def main():
             }
         )
 
-        with urllib.request.urlopen(req, timeout=10) as response:
-            print(f"DEBUG: Rich Telemetry Embed Sent Successfully! Status: {response.status}", file=sys.stderr)
+        # 429 Rate Limit Auto-Retry Loop
+        for attempt in range(4):
+            try:
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    print(f"DEBUG: Rich Telemetry Embed Sent Successfully! Status: {response.status}", file=sys.stderr)
+                    break
+            except urllib.error.HTTPError as e:
+                if e.code == 429:
+                    sleep_time = 3 * (attempt + 1)
+                    print(f"DEBUG: Hit 429 Rate Limit. Retrying in {sleep_time}s...", file=sys.stderr)
+                    time.sleep(sleep_time)
+                else:
+                    raise e
 
     except Exception as e:
         print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
