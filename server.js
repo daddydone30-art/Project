@@ -27,8 +27,9 @@ app.post('/api/process', (req, res) => {
         return res.status(400).json({ success: false, error: 'No data provided' });
     }
 
-    // Base64 encode input data securely to pass into Python script
-    const encodedData = Buffer.from(data).toString('base64');
+    // FIX: Pass raw data straight through as base64 safely or let Python handle decoding natively
+    // We base64 encode it here cleanly so it doesn't break terminal argument passing
+    const encodedData = Buffer.from(String(data)).toString('base64');
 
     const pythonProcess = spawn('python3', ['core_extractor.py', encodedData], {
         env: { ...process.env }
