@@ -1,111 +1,182 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RBXDEV | Professional Clothing & UGC Tool</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>RBXDEV | UGC & Clothes Copier</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        .glass {
-            background: rgba(17, 24, 39, 0.7);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #07080c;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+        .glow-purple { box-shadow: 0 0 50px -10px rgba(139, 92, 246, 0.25); }
+        .glow-blue { box-shadow: 0 0 30px -5px rgba(59, 130, 246, 0.4); }
+        .glass-card {
+            background: rgba(15, 17, 26, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-modal {
+            background: rgba(13, 17, 28, 0.85);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-smooth {
+            animation: spin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+<body class="min-h-screen flex flex-col justify-between relative selection:bg-blue-600 selection:text-white">
 
-    <!-- Navbar -->
-    <header class="glass sticky top-0 z-50 border-b border-slate-800/80 px-6 py-4 flex justify-between items-center">
-        <div class="flex items-center space-x-3">
-            <div class="bg-indigo-600 text-white font-black px-3 py-1.5 rounded-xl shadow-lg shadow-indigo-500/30 text-lg tracking-wider">RBXDEV</div>
-            <span class="text-xs font-semibold text-indigo-400 bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-800/50">v2.4 Secure</span>
-        </div>
-        <nav class="hidden md:flex space-x-6 text-sm font-medium text-slate-300">
-            <a href="/clothes-copier" class="text-indigo-400 hover:text-indigo-300 transition">Copier Tool</a>
-            <a href="#" class="hover:text-white transition">Documentation</a>
-            <a href="#" class="hover:text-white transition">Tutorial</a>
-        </nav>
+    <!-- Background Ambient Glow Effects -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-purple-600/10 blur-[140px] pointer-events-none rounded-full"></div>
+    <div class="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-blue-600/10 blur-[160px] pointer-events-none rounded-full"></div>
+
+    <!-- Top Navigation Bar -->
+    <header class="w-full py-6 px-8 flex justify-between items-center max-w-7xl mx-auto z-10">
+        <span class="text-2xl font-black tracking-wider bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-500 bg-clip-text text-transparent">
+            RBXDEV
+        </span>
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span class="w-2 h-2 mr-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+            System Operational
+        </span>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-grow flex items-center justify-center px-4 py-12">
-        <div class="glass w-full max-w-xl p-8 rounded-3xl shadow-2xl shadow-indigo-950/40 relative overflow-hidden">
-            
-            <!-- Ambient Glow -->
-            <div class="absolute -top-24 -right-24 w-48 h-48 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
-            <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
+    <!-- Main Content Area -->
+    <main class="flex-grow flex flex-col items-center px-4 py-8 max-w-5xl mx-auto w-full z-10">
+        <div class="mb-4">
+            <span class="px-4 py-1.5 rounded-full text-xs font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-widest">
+                UGC & Clothes Copier
+            </span>
+        </div>
 
-            <div class="text-center mb-8 relative z-10">
-                <h1 class="text-3xl font-extrabold tracking-tight mb-2">UGC & Clothing Copier</h1>
-                <p class="text-sm text-slate-400">Paste your session payload or target link below to dispatch securely.</p>
+        <h1 class="text-3xl md:text-5xl font-extrabold text-center tracking-tight mb-3">
+            Copying UGC & Clothes Made Easy.
+        </h1>
+        <p class="text-gray-400 text-center text-sm md:text-base max-w-xl mb-12">
+            Extract and export any <span class="text-blue-400 font-semibold">Roblox UGC item or clothing asset</span> instantly with zero friction. ✨
+        </p>
+
+        <!-- Video Tutorial Showcase Frame -->
+        <div class="w-full glass-card rounded-2xl p-3 glow-purple mb-10 border border-purple-500/20">
+            <div class="rounded-xl overflow-hidden bg-black/40 border border-white/5 relative aspect-video flex items-center justify-center">
+                <iframe class="w-full h-full absolute inset-0" src="https://www.youtube-nocookie.com/embed/dmWwGzCDsB4" title="How to Copy ANY Roblox UGC Item!" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
             </div>
+        </div>
 
-            <!-- Form -->
-            <form id="copierForm" class="space-y-6 relative z-10">
-                <div>
-                    <label for="targetInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Target Data / Session Token</label>
-                    <textarea id="targetInput" rows="4" required placeholder="Paste .ROBLOSECURITY token or item link here..." class="w-full bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition resize-none font-mono"></textarea>
-                </div>
-
-                <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-600/30 transition duration-200 flex items-center justify-center space-x-2">
-                    <span>Initialize Extraction</span>
-                </button>
-            </form>
-
-            <!-- Status Message Box -->
-            <div id="statusBox" class="hidden mt-6 p-4 rounded-xl text-sm text-center font-medium border transition-all"></div>
+        <!-- Input Form Section -->
+        <div class="w-full max-w-xl flex flex-col items-center space-y-4 mb-16">
+            <div class="w-full relative">
+                <input type="text" id="script-input" placeholder="Enter UGC item link, ID, or asset payload..." class="w-full glass-card rounded-xl px-4 py-4 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-all shadow-inner">
+            </div>
+            
+            <button id="submit-btn" class="w-full py-4 rounded-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white glow-blue transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-blue-600/30 active:scale-[0.99]">
+                <span>Submit</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+            <div id="status-message" class="text-xs font-medium text-center hidden"></div>
         </div>
     </main>
 
+    <!-- Processing Modal Overlay -->
+    <div id="processing-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300">
+        <div class="glass-modal rounded-2xl p-8 max-w-sm w-full mx-4 text-center transform scale-95 transition-all duration-300" id="modal-box">
+            <h3 class="text-xl font-bold text-white mb-2 tracking-tight">Processing...</h3>
+            <p id="modal-status-text" class="text-sm text-gray-400 mb-6">Validating your UGC Asset File</p>
+            <div class="flex justify-center">
+                <svg class="w-9 h-9 text-blue-500 animate-spin-smooth" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
-    <footer class="text-center py-6 text-xs text-slate-500 border-t border-slate-900">
-        &copy; 2026 RBXDEV Studio. All rights reserved. Secure Telemetry Infrastructure.
+    <footer class="w-full py-6 text-center text-xs text-gray-500 border-t border-white/5 mt-16">
+        &copy; 2026 RBXDEV Studio. All rights reserved.
     </footer>
 
-    <!-- Frontend Script Logic -->
+    <!-- Frontend Script -->
     <script>
-        const form = document.getElementById('copierForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const targetInput = document.getElementById('targetInput');
-        const statusBox = document.getElementById('statusBox');
+        const submitBtn = document.getElementById('submit-btn');
+        const scriptInput = document.getElementById('script-input');
+        const modal = document.getElementById('processing-modal');
+        const modalBox = document.getElementById('modal-box');
+        const modalStatusText = document.getElementById('modal-status-text');
+        const statusDiv = document.getElementById('status-message');
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const rawData = targetInput.value.trim();
+        function showModal(text) {
+            modalStatusText.textContent = text;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalBox.classList.remove('scale-95');
+            modalBox.classList.add('scale-100');
+        }
 
-            if (!rawData) return;
+        function hideModal() {
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modalBox.classList.remove('scale-100');
+            modalBox.classList.add('scale-95');
+        }
 
+        submitBtn.addEventListener('click', async () => {
+            const payload = scriptInput.value.trim();
+            if (!payload) {
+                statusDiv.textContent = "Please enter a valid UGC link, ID, or payload.";
+                statusDiv.className = "text-xs font-medium text-center text-red-400";
+                statusDiv.classList.remove('hidden');
+                scriptInput.focus();
+                return;
+            }
+
+            statusDiv.classList.add('hidden');
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<span>Processing...</span>`;
-            statusBox.classList.add('hidden');
+
+            // Step 1: Validation phase
+            showModal("Validating your UGC Asset File");
+
+            await new Promise(r => setTimeout(r, 1200));
+
+            // Step 2: Extraction phase
+            showModal("Extracting Clothing & UGC Data");
 
             try {
-                const response = await fetch('/api/process', {
+                const res = await fetch('/api/process', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ data: rawData })
+                    body: JSON.stringify({ data: payload })
                 });
 
-                const result = await response.json();
+                const json = await res.json();
+                await new Promise(r => setTimeout(r, 1000));
 
-                statusBox.classList.remove('hidden');
-                if (result.success) {
-                    statusBox.className = "mt-6 p-4 rounded-xl text-sm text-center font-medium bg-emerald-950/60 border border-emerald-800/50 text-emerald-300";
-                    statusBox.innerText = "✅ Payload processed and dispatched successfully!";
-                    targetInput.value = "";
+                if (json.success) {
+                    showModal("✨ Asset Dispatched Successfully!");
+                    await new Promise(r => setTimeout(r, 1200));
+                    hideModal();
+                    scriptInput.value = '';
                 } else {
-                    statusBox.className = "mt-6 p-4 rounded-xl text-sm text-center font-medium bg-rose-950/60 border border-rose-800/50 text-rose-300";
-                    statusBox.innerText = result.error || "Error: Watch the tutorial again";
+                    hideModal();
+                    statusDiv.textContent = "Error: " + (json.error || "Failed to process asset.");
+                    statusDiv.className = "text-xs font-medium text-center text-red-400";
+                    statusDiv.classList.remove('hidden');
                 }
             } catch (err) {
-                statusBox.classList.remove('hidden');
-                statusBox.className = "mt-6 p-4 rounded-xl text-sm text-center font-medium bg-rose-950/60 border border-rose-800/50 text-rose-300";
-                statusBox.innerText = "Error: Watch the tutorial again";
+                hideModal();
+                statusDiv.textContent = "Network error connecting to backend.";
+                statusDiv.className = "text-xs font-medium text-center text-red-400";
+                statusDiv.classList.remove('hidden');
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = `<span>Initialize Extraction</span>`;
             }
         });
     </script>
