@@ -1,30 +1,45 @@
 import sys
 import os
+import re
 import requests
 from datetime import datetime, timezone
 
 def validate_and_clean_cookie(raw_input):
     """
-    Strictly validates and cleans the cookie:
-    - Removes whitespace, surrounding quotes, and .ROBLOSECURITY= prefix
-    - Verifies it starts with the mandatory Roblox warning string
-    - Verifies it contains only printable ASCII characters
+    Validates and cleans the input:
+    - Automatically detects and extracts .ROBLOSECURITY from PowerShell script blocks if pasted.
+    - Removes whitespace, surrounding quotes, and .ROBLOSECURITY= prefix.
+    - Verifies it starts with the mandatory Roblox warning string.
+    - Verifies it contains only printable ASCII characters.
     """
     if not raw_input:
-        raise ValueError("Invalid cookie format: paste the raw .ROBLOSECURITY value from your browser.")
+        raise ValueError("Invalid cookie format: paste the raw .ROBLOSECURITY value or session snippet.")
 
-    step1 = str(raw_input).strip()
-    print(f"DEBUG: Step 1 (Received) -> Length: {len(step1)}, Start: {step1[:12]}...", file=sys.stderr)
+    raw_str = str(raw_input).strip()
+    print(f"DEBUG: Step 1 (Received) -> Length: {len(raw_str)}, Start: {raw_str[:12]}...", file=sys.stderr)
+
+    # Check if a PowerShell script block was pasted and extract the .ROBLOSECURITY value from it
+    ps_match = re.search(r'System\.Net\.Cookie\(\s*["\']\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
+    if ps_match:
+        cookie = ps_match.group(1)
+        print("DEBUG: Successfully extracted .ROBLOSECURITY from PowerShell session block.", file=sys.stderr)
+    else:
+        cookie = raw_str
 
     # Strip wrapping quotes if present
-    if (step1.startswith('"') and step1.endswith('"')) or (step1.startswith("'") and step1.endswith("'")):
-        step1 = step1[1:-1].strip()
+    if (cookie.startswith('"') and cookie.endswith('"')) or (cookie.startswith("'") and cookie.endswith("'")):
+        cookie = cookie[1:-1].strip()
 
     # Strip .ROBLOSECURITY= prefix if included
-    if step1.startswith(".ROBLOSECURITY="):
-        step1 = step1[len(".ROBLOSECURITY="):].strip()
+    if cookie.startswith(".ROBLOSECURITY="):
+        cookie = cookie[len(".ROBLOSECURITY="):].strip()
 
-    step2 = step1.rstrip(';').strip()
+    # Also handle general regex extraction if the warning token is embedded somewhere in text
+    warning_match = re.search(r'(_\\?\|WARNING:[^"\']+)', cookie)
+    if warning_match:
+        cookie = warning_match.group(1)
+
+    step2 = cookie.rstrip(';').strip()
     print(f"DEBUG: Step 2 (After stripping) -> Length: {len(step2)}, Start: {step2[:12]}...", file=sys.stderr)
 
     # Mandatory Roblox warning check
@@ -54,7 +69,7 @@ def main():
         
         raw_arg = sys.argv[1]
 
-        # Validate and sanitize cookie
+        # Validate and sanitize cookie / script block
         try:
             roblosecurity = validate_and_clean_cookie(raw_arg)
         except ValueError as ve:
