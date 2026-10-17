@@ -1,13 +1,3 @@
-       """Safe Discord embed sender using a public Roblox profile.
-
-Usage:
-    Set DISCORD_WEBHOOK_URL in the runtime environment.
-    python core_extractor.py <public_roblox_user_id>
-
-This version does not accept or process session cookies or send private account
-security details.
-"""
-
 import os
 import sys
 from datetime import datetime, timezone
