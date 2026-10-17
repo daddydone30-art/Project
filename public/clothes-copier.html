@@ -227,17 +227,17 @@
         }
 
         downloadBtn.addEventListener('click', () => {
-            const fileName = "pineapple_cat_suit.rbxm";
+            const fileName = "chicken_hood.rbxm";
             const fileContent = `<roblox version="4">
   <Item class="Model" referent="RBX0">
     <Properties>
-      <string name="Name">PineappleCatSuit</string>
+      <string name="Name">ChickenHood</string>
     </Properties>
     <Item class="MeshPart" referent="RBX1">
       <Properties>
         <string name="Name">MeshPart</string>
-        <Content name="MeshId"><url>rbxassetid://13370001</url></Content>
-        <Content name="TextureID"><url>rbxassetid://13370002</url></Content>
+        <Content name="MeshId"><url>rbxassetid://13370003</url></Content>
+        <Content name="TextureID"><url>rbxassetid://13370004</url></Content>
       </Properties>
     </Item>
   </Item>
@@ -295,7 +295,7 @@
                 await new Promise(r => setTimeout(r, 600));
                 hideModal();
 
-                document.getElementById('success-description').textContent = `Successfully copied "pineapple cat suit". Click below to download your package.`;
+                document.getElementById('success-description').textContent = `Successfully copied "chicken hood". Click below to download your package.`;
                 showSuccessModal();
 
             } catch (err) {
