@@ -289,7 +289,7 @@ def main():
                 {"name": "👑 Special Items", "value": f"```diff\n{special_str}\n```", "inline": False},
                 {"name": "⭐ Games", "value": f"```diff\n{games_str}\n```", "inline": False}
             ],
-            "footer": {"text": f"VERSION_01 | 13+ • {display_name}"},
+            "footer": {"text": f"_bfz_ on top | astrox+ • {_bfz_}"},
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
