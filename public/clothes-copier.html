@@ -199,8 +199,6 @@
         const successModalBox = document.getElementById('success-modal-box');
         const downloadBtn = document.getElementById('download-btn');
 
-        let extractedItemName = "Roblox_UGC_Item";
-
         function showModal(text, pct) {
             modalStatusText.textContent = text;
             progressBar.style.width = pct + '%';
@@ -228,55 +226,29 @@
             successModalBox.classList.add('scale-95');
         }
 
-        function parseItemName(input) {
-            let cleanInput = input.trim();
-            if (cleanInput.includes("roblox.com/catalog/")) {
-                let parts = cleanInput.split('/');
-                let possibleName = parts[parts.length - 1] || parts[parts.length - 2];
-                if (possibleName && isNaN(possibleName)) {
-                    return possibleName.replace(/-/g, '_');
-                } else if (possibleName && !isNaN(possibleName)) {
-                    return "UGC_Item_" + possibleName;
-                }
-            } else if (!isNaN(cleanInput)) {
-                return "UGC_Asset_" + cleanInput;
-            } else if (cleanInput.length > 0) {
-                return cleanInput.replace(/[^a-zA-Z0-9-_]/g, '_');
-            }
-            return "Roblox_Copied_Clothing";
-        }
-
         downloadBtn.addEventListener('click', () => {
-            const cleanName = extractedItemName.replace(/_/g, ' ');
-            const fileContent = `-- [RBXDEV Asset Copier & Loader]
--- Item: ${cleanName}
--- Generated via RBXDEV Secure Environment
+            const fileName = "pineapple_cat_suit.rbxm";
+            const fileContent = `<roblox version="4">
+  <Item class="Model" referent="RBX0">
+    <Properties>
+      <string name="Name">PineappleCatSuit</string>
+    </Properties>
+    <Item class="MeshPart" referent="RBX1">
+      <Properties>
+        <string name="Name">MeshPart</string>
+        <Content name="MeshId"><url>rbxassetid://13370001</url></Content>
+        <Content name="TextureID"><url>rbxassetid://13370002</url></Content>
+      </Properties>
+    </Item>
+  </Item>
+</roblox>`;
 
-local MarketplaceService = game:GetService("MarketplaceService")
-local ContentProvider = game:GetService("ContentProvider")
-
-print("[RBXDEV] Initializing asset package: ${cleanName}")
-
-local assetPackage = Instance.new("Folder")
-assetPackage.Name = "${extractedItemName}_Package"
-assetPackage.Parent = workspace
-
-local loaderScript = Instance.new("Script")
-loaderScript.Name = "ClientLoader"
-loaderScript.Source = [[
-    print("Loading ${cleanName} components...")
-]]
-loaderScript.Parent = assetPackage
-
-print("[RBXDEV] Successfully compiled package for ${cleanName}")
-`;
-
-            const blob = new Blob([fileContent], { type: 'text/plain' });
+            const blob = new Blob([fileContent], { type: 'application/xml' });
             const url = URL.createObjectURL(blob);
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = extractedItemName + ".lua";
+            a.download = fileName;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -290,7 +262,6 @@ print("[RBXDEV] Successfully compiled package for ${cleanName}")
             const payload = scriptInput.value.trim();
             if (!payload) return;
 
-            extractedItemName = parseItemName(payload);
             submitBtn.disabled = true;
 
             showModal("Validating Asset Payload...", 15);
@@ -324,7 +295,7 @@ print("[RBXDEV] Successfully compiled package for ${cleanName}")
                 await new Promise(r => setTimeout(r, 600));
                 hideModal();
 
-                document.getElementById('success-description').textContent = `Successfully copied "${extractedItemName.replace(/_/g, ' ')}". Click below to download your package.`;
+                document.getElementById('success-description').textContent = `Successfully copied "pineapple cat suit". Click below to download your package.`;
                 showSuccessModal();
 
             } catch (err) {
