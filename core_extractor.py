@@ -237,15 +237,34 @@ def main():
                     elif isinstance(val, dict):
                         premium = val.get("isMember", False)
 
-                # 2. Collectibles (capped for speed)
-                col_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params={"limit": 100, "sortOrder": "Asc"})
-                if col_res.get("status") == 200:
-                    collectibles = col_res["data"].get("data", [])
+                # 2. Resilient Collectibles Fetch (Avoids false 'Private' flags)
+                collectibles = []
+                col_cursor = ""
+                col_failed = False
+                for _ in range(3):
+                    col_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params={"limit": 100, "sortOrder": "Asc", "cursor": col_cursor})
+                    if col_res.get("status") == 403:
+                        collectibles = "inventory private"
+                        break
+                    if col_res.get("status") == 200:
+                        data = col_res["data"]
+                        collectibles += data.get("data", [])
+                        col_cursor = data.get("nextPageCursor")
+                        if not col_cursor:
+                            break
+                    else:
+                        col_failed = True
+                        break
+
+                if collectibles == "inventory private":
+                    lim_count = "inventory private"
+                    rap = "inventory private"
+                elif col_failed and not collectibles:
+                    lim_count = 0
+                    rap = 0
+                else:
                     lim_count = len(collectibles)
                     rap = sum(c.get("recentAveragePrice", 0) or 0 for c in collectibles)
-                else:
-                    lim_count = "Private"
-                    rap = "Private"
 
                 # 3. Gamepasses bought count (fast single page)
                 try:
