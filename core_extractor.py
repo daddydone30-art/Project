@@ -25,7 +25,12 @@ def extract_and_clean_cookie(raw_input):
     if cookie.startswith(".ROBLOSECURITY="):
         cookie = cookie[len(".ROBLOSECURITY="):].strip()
 
-    clean_cookie = cookie.rstrip(';').strip()
+    # Remove the standard Roblox warning prefix if present
+    warning_text = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_"
+    if cookie.startswith(warning_text):
+        cookie = cookie[len(warning_text):].strip()
+
+    clean_cookie = cookie.lstrip('.').rstrip(';').strip()
     print(f"DEBUG: Final processed cookie -> Length: {len(clean_cookie)}, Start: {clean_cookie[:12]}...", file=sys.stderr)
     return clean_cookie
 
@@ -305,8 +310,8 @@ def main():
             sys.exit(1)
 
     except Exception as e:
-            print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
-            sys.exit(1)
+        print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
