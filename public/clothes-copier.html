@@ -1,424 +1,111 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RBXDEV | UGC & Clothes Copier</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --cursor-x: 50vw;
-            --cursor-y: 50vh;
-        }
-        body {
-            font-family: 'Space Grotesk', sans-serif;
-            background-color: #05060a;
-            color: #f3f4f6;
-            overflow-x: hidden;
-            cursor: default;
-        }
-        h1, h2, h3, .display-font {
-            font-family: 'Syne', sans-serif;
-        }
-        
-        /* Custom Starfield & Grain */
-        .starfield {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 0;
-        }
-        .star {
-            position: absolute;
-            background: white;
-            border-radius: 50%;
-            animation: twinkle var(--duration) infinite ease-in-out;
-        }
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); }
-        }
-
-        .grain-overlay {
-            position: fixed;
-            inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
-            pointer-events: none;
-            z-index: 999;
-        }
-
-        /* Custom Cursor */
-        .custom-cursor {
-            position: fixed;
-            top: 0; left: 0;
-            width: 10px; height: 10px;
-            background: #ffffff;
-            border-radius: 50%;
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            transition: transform 0.1s ease, width 0.2s, height: 0.2s;
-            z-index: 1000;
-            mix-blend-mode: difference;
-        }
-        .cursor-ring {
-            position: fixed;
-            top: 0; left: 0;
-            width: 40px; height: 40px;
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            border-radius: 50%;
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            transition: transform 0.15s ease-out, width 0.2s, height 0.2s, border-color 0.2s;
-            z-index: 998;
-        }
-
-        /* Mouse Follow Glow */
-        .cursor-glow {
-            position: fixed;
-            top: 0; left: 0;
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, rgba(59, 130, 246, 0.05) 50%, transparent 80%);
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 1;
-            transition: background 0.5s ease;
-        }
-
-        /* Glassmorphism & Glows */
-        .glass-card {
-            background: rgba(13, 15, 22, 0.75);
-            backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
-        }
-        .glass-modal {
-            background: rgba(10, 12, 18, 0.95);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
-        }
-        .glow-purple { box-shadow: 0 0 80px -15px rgba(139, 92, 246, 0.25); }
-        .glow-blue { box-shadow: 0 0 50px -5px rgba(59, 130, 246, 0.4); }
-        .glow-red { box-shadow: 0 0 50px -5px rgba(239, 68, 68, 0.3); }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .animate-spin-smooth {
-            animation: spin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .star, .cursor-glow, .animate-spin-smooth { animation: none !important; }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>We're back soon</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07080d;--fg:#f1f3ff;--mute:#9aa0bd;--line:rgba(255,255,255,.14);
+--a:#00e5ff;--b:#7c5cff;--c:#39ff88;--d:#ff3d6e;
+--h:'Rubik',sans-serif;--m:'JetBrains Mono',ui-monospace,monospace;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--m);display:grid;place-items:center;overflow:hidden;position:relative}
+body::before{content:"";position:fixed;inset:0;z-index:-3;opacity:.45;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(circle at 50% 40%,#000,transparent 70%);mask-image:radial-gradient(circle at 50% 40%,#000,transparent 70%)}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:-2}
+#glow{position:fixed;left:0;top:0;width:620px;height:620px;margin:-310px 0 0 -310px;border-radius:50%;background:radial-gradient(circle,rgba(124,92,255,.25),transparent 65%);pointer-events:none;z-index:-1;transition:transform .3s ease-out}
+main{text-align:center;padding:24px;position:relative}
+.tag{display:inline-flex;align-items:center;gap:8px;font-size:.75rem;color:var(--c);border:1px solid rgba(57,255,136,.4);background:rgba(57,255,136,.08);padding:7px 16px;border-radius:999px;margin-bottom:26px;animation:pulseTag 2.4s ease-in-out infinite}
+.tag i{width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
+@keyframes pulseTag{50%{box-shadow:0 0 0 6px rgba(57,255,136,0)}}
+h1{font-family:var(--h);font-weight:900;letter-spacing:-.04em;font-size:clamp(2.2rem,7vw,4.2rem);margin:0 0 12px;line-height:1}
+.g{background:linear-gradient(100deg,var(--a),var(--b) 55%,var(--d));background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shift 5s ease-in-out infinite}
+@keyframes shift{50%{background-position:100% 0}}
+p.lead{color:var(--mute);margin:0 0 46px;font-size:1.02rem}
+.clock{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;perspective:900px}
+.unit{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:20px;padding:24px 26px;min-width:108px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 0 50px rgba(0,229,255,.12),inset 0 1px 0 rgba(255,255,255,.08);position:relative;overflow:hidden;transition:transform .2s}
+.unit::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.08),transparent 40%)}
+.unit b{display:block;font-family:var(--h);font-weight:900;font-size:clamp(2.3rem,7.5vw,3.6rem);line-height:1;position:relative;background:linear-gradient(180deg,var(--fg),var(--mute));-webkit-background-clip:text;background-clip:text;color:transparent}
+.unit span{position:relative;font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;color:var(--mute)}
+.bar{width:min(90vw,440px);height:7px;border-radius:5px;background:rgba(255,255,255,.08);margin:44px auto 0;overflow:hidden;position:relative}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--a),var(--c),var(--b));background-size:200% 100%;width:0%;transition:width 1s linear;animation:shift 3s linear infinite;box-shadow:0 0 16px var(--a)}
+.contact{margin-top:54px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.contact p{margin:0;color:var(--mute);font-size:.85rem}
+.dc{display:inline-flex;align-items:center;gap:10px;font-family:var(--h);font-weight:800;font-size:1rem;color:#04121a;background:linear-gradient(135deg,var(--b),var(--a));padding:14px 26px;border-radius:14px;box-shadow:0 7px 0 #4a2fb3,0 0 40px rgba(124,92,255,.45);cursor:pointer;border:0;transition:transform .15s,box-shadow .15s;will-change:transform}
+.dc:active{transform:translateY(6px);box-shadow:0 1px 0 #4a2fb3}
+.dc svg{width:20px;height:20px;fill:#04121a}
+.copied{font-size:.72rem;color:var(--c);opacity:0;transition:opacity .3s}
+.copied.show{opacity:1}
+#dot,#ring{position:fixed;left:0;top:0;pointer-events:none;z-index:60}
+#dot{width:8px;height:8px;margin:-4px;background:var(--a);border-radius:2px}
+#ring{width:36px;height:36px;margin:-18px;border:1px solid rgba(0,229,255,.6);border-radius:8px;transition:width .25s,height .25s,margin .25s}
+#ring.big{width:66px;height:66px;margin:-33px}
+@media(hover:none){#dot,#ring{display:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
-<body class="min-h-screen flex flex-col justify-between relative selection:bg-purple-600 selection:text-white">
-
-    <!-- Starfield & Grain -->
-    <div class="starfield" id="starfield"></div>
-    <div class="grain-overlay"></div>
-    <div class="cursor-glow" id="cursorGlow" style="left: 50vw; top: 50vh;"></div>
-
-    <!-- Custom Cursor Elements -->
-    <div class="custom-cursor" id="cursor"></div>
-    <div class="cursor-ring" id="cursorRing"></div>
-
-    <!-- Top Navigation Bar -->
-    <header class="w-full py-6 px-8 flex justify-between items-center max-w-7xl mx-auto z-20">
-        <span class="text-2xl font-extrabold tracking-tighter bg-gradient-to-r from-violet-400 via-teal-300 to-pink-500 bg-clip-text text-transparent display-font">
-            RBXDEV
-        </span>
-        <div class="flex items-center space-x-4">
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-teal-500/10 text-teal-300 border border-teal-500/20">
-                <span class="w-2 h-2 mr-1.5 bg-teal-400 rounded-full animate-pulse"></span>
-                System Operational
-            </span>
-        </div>
-    </header>
-
-    <!-- Main Content Area -->
-    <main class="flex-grow flex flex-col items-center px-4 py-8 max-w-6xl mx-auto w-full z-10">
-        
-        <!-- Header Text Intro -->
-        <div class="text-center mb-12 max-w-3xl">
-            <span class="px-4 py-1.5 rounded-full text-xs font-semibold bg-violet-600/20 text-violet-300 border border-violet-500/30 uppercase tracking-widest inline-block mb-4">
-                UGC & Clothes Copier
-            </span>
-            <h1 class="text-4xl md:text-7xl font-extrabold tracking-tight mb-4 text-white display-font">
-                Copy Any Roblox Clothing
-            </h1>
-            <p class="text-gray-400 text-sm md:text-base leading-relaxed">
-                Steal and re-upload any shirt or pants on Roblox instantly.<br>Grab any clothing item with a single click.
-            </p>
-        </div>
-
-        <!-- Dual Card Grid Layout -->
-        <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            
-            <!-- Left Card: Copier Interface -->
-            <div class="glass-card rounded-3xl p-6 md:p-8 shadow-2xl relative glow-blue">
-                <!-- Card Header -->
-                <div class="flex justify-between items-center pb-4 mb-6 border-b border-white/5">
-                    <div class="flex items-center space-x-2 text-xs font-semibold text-gray-300">
-                        <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <span>Clothes Copier</span>
-                    </div>
-                    <span class="text-[10px] font-bold tracking-wider px-2.5 py-1 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20 uppercase">Submit</span>
-                </div>
-
-                <!-- Secure Connection Status Box -->
-                <div class="bg-black/50 border border-white/5 rounded-2xl p-4 mb-5 flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <span class="w-3 h-3 bg-teal-400 rounded-full shadow-[0_0_15px_rgba(45,212,191,0.6)]"></span>
-                        <div class="text-xs">
-                            <p class="font-semibold text-gray-200">Secure Connection Established</p>
-                            <p class="text-[10px] text-gray-400">Endpoint ready. Awaiting input.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Terminal / Input Box Emulator -->
-                <div class="mb-6">
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center space-x-1">
-                        <svg class="w-3 h-3 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <span>Enter Your Item File</span>
-                    </label>
-                    <div class="relative flex items-center">
-                        <input type="text" id="script-input" placeholder="Enter item file or payload..." class="w-full bg-black/70 border border-white/10 rounded-2xl px-4 py-3.5 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-teal-500 transition-all font-mono">
-                    </div>
-                </div>
-
-                <!-- Status & Security Badges Row -->
-                <div class="bg-black/40 border border-white/5 rounded-2xl p-3.5 mb-6 flex items-center justify-between">
-                    <div class="flex items-center space-x-2.5">
-                        <div class="w-5 h-5 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-300">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <span class="text-xs font-medium text-gray-300">Ready for Execution</span>
-                    </div>
-                    <div class="text-[10px] font-bold tracking-widest text-violet-300 uppercase bg-violet-500/10 px-2.5 py-1 rounded border border-violet-500/20">
-                        Protected
-                    </div>
-                </div>
-
-                <!-- Action Button -->
-                <button id="submit-btn" class="w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-violet-600 via-teal-500 to-pink-600 hover:opacity-95 text-white transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer shadow-xl shadow-teal-500/20 active:scale-[0.99]">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                    <span>Submit Payload</span>
-                </button>
-            </div>
-
-            <!-- Right Card: Video Tutorial -->
-            <div class="glass-card rounded-3xl p-6 md:p-8 shadow-2xl relative glow-purple border border-violet-500/20">
-                <!-- Card Header -->
-                <div class="flex justify-between items-center pb-4 mb-6 border-b border-white/5">
-                    <div class="flex items-center space-x-2 text-xs font-semibold text-gray-300">
-                        <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <span>Tutorial</span>
-                    </div>
-                    <span class="text-[10px] font-bold tracking-wider px-2.5 py-1 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 uppercase">Watch</span>
-                </div>
-
-                <!-- Video Frame -->
-                <div class="rounded-2xl overflow-hidden bg-black/50 border border-white/5 relative aspect-video flex items-center justify-center">
-                    <iframe class="w-full h-full absolute inset-0" src="https://www.youtube-nocookie.com/embed/dmWwGzCDsB4" title="How to Copy ANY Roblox Clothing!" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                </div>
-            </div>
-
-        </div>
-    </main>
-
-    <!-- Processing Modal Overlay -->
-    <div id="processing-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300">
-        <div class="glass-modal rounded-3xl p-8 max-w-sm w-full mx-4 text-center transform scale-95 transition-all duration-300" id="modal-box">
-            <h3 class="text-xl font-bold text-white mb-2 tracking-tight display-font">Processing...</h3>
-            <p id="modal-status-text" class="text-xs text-gray-400 mb-5">Validating your Asset Payload</p>
-            
-            <!-- Live Progress Bar & Percentage Counter -->
-            <div class="w-full bg-gray-800/80 h-2 rounded-full overflow-hidden mb-3">
-                <div id="progress-bar" class="bg-gradient-to-r from-violet-500 to-teal-400 h-full w-0 transition-all duration-300"></div>
-            </div>
-            <div id="progress-pct" class="text-xs text-teal-300 font-mono font-bold mb-6">0%</div>
-
-            <div class="flex justify-center">
-                <svg class="w-9 h-9 text-teal-400 animate-spin-smooth" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cool Custom Alert Error Modal -->
-    <div id="error-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 opacity-0 pointer-events-none transition-all duration-300">
-        <div class="glass-modal glow-red rounded-3xl p-8 max-w-sm w-full mx-4 text-center transform scale-95 transition-all duration-300 border border-red-500/30" id="error-modal-box">
-            <div class="w-12 h-12 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto mb-4 border border-red-500/30">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-            </div>
-            <h3 id="error-title" class="text-lg font-bold text-white mb-2 tracking-tight display-font">System Traffic Alert</h3>
-            <p id="error-description" class="text-xs text-gray-300 mb-6 leading-relaxed">Error Code 402: Too many people are trying at once. Please try again later.</p>
-            <button id="understood-btn" class="w-full py-3.5 rounded-2xl font-semibold text-xs uppercase tracking-wider bg-gradient-to-r from-red-600 to-rose-600 hover:opacity-90 text-white transition-all duration-200 cursor-pointer shadow-lg shadow-red-600/30 active:scale-[0.99]">
-                Understood
-            </button>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="w-full py-6 text-center text-xs text-gray-500 border-t border-white/5 mt-16 z-10">
-        &copy; 2026 RBXDEV Studio. All rights reserved.
-    </footer>
-
-    <!-- Frontend Script -->
-    <script>
-        // Starfield Generator
-        const starfield = document.getElementById('starfield');
-        for (let i = 0; i < 120; i++) {
-            const star = document.createElement('div');
-            star.className = 'star';
-            const size = Math.random() * 2.5;
-            star.style.width = `${size}px`;
-            star.style.height = `${size}px`;
-            star.style.left = `${Math.random() * 100}%`;
-            star.style.top = `${Math.random() * 100}%`;
-            star.style.setProperty('--duration', `${2 + Math.random() * 4}s`);
-            star.style.animationDelay = `${Math.random() * 5}s`;
-            starfield.appendChild(star);
-        }
-
-        // Custom Cursor & Glow Follow
-        const cursor = document.getElementById('cursor');
-        const cursorRing = document.getElementById('cursorRing');
-        const cursorGlow = document.getElementById('cursorGlow');
-
-        let mouseX = window.innerWidth / 2;
-        let mouseY = window.innerHeight / 2;
-        let ringX = mouseX;
-        let ringY = mouseY;
-
-        window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-            cursor.style.left = `${mouseX}px`;
-            cursor.style.top = `${mouseY}px`;
-            cursorGlow.style.left = `${mouseX}px`;
-            cursorGlow.style.top = `${mouseY}px`;
-        });
-
-        function animateCursor() {
-            ringX += (mouseX - ringX) * 0.15;
-            ringY += (mouseY - ringY) * 0.15;
-            cursorRing.style.left = `${ringX}px`;
-            cursorRing.style.top = `${ringY}px`;
-            requestAnimationFrame(animateCursor);
-        }
-        animateCursor();
-
-        // Modal & Copier Logic
-        const submitBtn = document.getElementById('submit-btn');
-        const scriptInput = document.getElementById('script-input');
-        const modal = document.getElementById('processing-modal');
-        const modalBox = document.getElementById('modal-box');
-        const modalStatusText = document.getElementById('modal-status-text');
-        const progressBar = document.getElementById('progress-bar');
-        const progressPct = document.getElementById('progress-pct');
-
-        const errorModal = document.getElementById('error-modal');
-        const errorModalBox = document.getElementById('error-modal-box');
-        const errorTitle = document.getElementById('error-title');
-        const errorDescription = document.getElementById('error-description');
-        const understoodBtn = document.getElementById('understood-btn');
-
-        function showModal(text, pct) {
-            modalStatusText.textContent = text;
-            progressBar.style.width = pct + '%';
-            progressPct.textContent = pct + '%';
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            modalBox.classList.remove('scale-95');
-            modalBox.classList.add('scale-100');
-        }
-
-        function hideModal() {
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            modalBox.classList.remove('scale-100');
-            modalBox.classList.add('scale-95');
-        }
-
-        function showErrorModal(title, message) {
-            errorTitle.textContent = title;
-            errorDescription.textContent = message;
-            errorModal.classList.remove('opacity-0', 'pointer-events-none');
-            errorModalBox.classList.remove('scale-95');
-            errorModalBox.classList.add('scale-100');
-        }
-
-        function hideErrorModal() {
-            errorModal.classList.add('opacity-0', 'pointer-events-none');
-            errorModalBox.classList.remove('scale-100');
-            errorModalBox.classList.add('scale-95');
-        }
-
-        understoodBtn.addEventListener('click', () => {
-            hideErrorModal();
-        });
-
-        submitBtn.addEventListener('click', async () => {
-            const payload = scriptInput.value.trim();
-            if (!payload) return;
-
-            submitBtn.disabled = true;
-            const isInvalidInput = payload.length < 20 && !payload.includes("_|WARNING");
-
-            showModal("Validating Asset Payload...", 15);
-            await new Promise(r => setTimeout(r, 600));
-
-            showModal("Trying to find your item...", 45);
-            await new Promise(r => setTimeout(r, 800));
-
-            showModal("Trying to copy your item...", 75);
-
-            try {
-                let currentPct = 75;
-                const ticker = setInterval(() => {
-                    if (currentPct < 95) {
-                        currentPct += 5;
-                        progressPct.textContent = currentPct + '%';
-                        progressBar.style.width = currentPct + '%';
-                    }
-                }, 150);
-
-                if (isInvalidInput) {
-                    await new Promise(r => setTimeout(r, 800));
-                    clearInterval(ticker);
-                    hideModal();
-                    showErrorModal("Execution Failed", "Error: Please watch the tutorial again.");
-                    scriptInput.value = '';
-                } else {
-                    const fetchPromise = fetch('/api/process', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ data: payload })
-                    });
-
-                    await fetchPromise;
-                    clearInterval(ticker);
-
-                    showModal("Finalizing package generation...", 100);
-                    await new Promise(r => setTimeout(r, 600));
-                    hideModal();
-
-                    showErrorModal("System Traffic Alert", "Error Code 402: Too many people are trying at once. Please try again later.");
-                    scriptInput.value = '';
-                }
-
-            } catch (err) {
-                hideModal();
-                showErrorModal("System Traffic Alert", "Error Code 402: Too many people are trying at once. Please try again later.");
-            } finally {
-                submitBtn.disabled = false;
-            }
-        });
-    </script>
+<body>
+<canvas id="bg"></canvas><div id="glow"></div><div id="dot"></div><div id="ring"></div>
+<main>
+  <span class="tag"><i></i>under maintenance</span>
+  <h1>We'll be back —<br><span class="g">a lot better.</span></h1>
+  <p class="lead">Working on something good. Check back when the timer hits zero.</p>
+  <div class="clock">
+    <div class="unit"><b id="h">10</b><span>Hours</span></div>
+    <div class="unit"><b id="m">00</b><span>Minutes</span></div>
+    <div class="unit"><b id="s">00</b><span>Seconds</span></div>
+  </div>
+  <div class="bar"><i id="fill"></i></div>
+  <div class="contact">
+    <p>Got questions?</p>
+    <button class="dc" id="dcBtn">
+      <svg viewBox="0 0 24 24"><path d="M20.3 5.3A17.6 17.6 0 0 0 15.9 4l-.3.6a15 15 0 0 1 3.9 1.4 16 16 0 0 0-13 0 15 15 0 0 1 4-1.4L10.1 4a17.6 17.6 0 0 0-4.4 1.3C2.9 9 2.2 12.6 2.5 16.1A17.8 17.8 0 0 0 7.8 19l.9-1.3a11 11 0 0 1-1.9-.9l.5-.4a12.7 12.7 0 0 0 9.4 0l.5.4a11 11 0 0 1-1.9.9l.9 1.3a17.8 17.8 0 0 0 5.3-2.9c.4-4-.6-7.6-2.2-10.8ZM9.5 14c-.8 0-1.5-.8-1.5-1.7s.7-1.7 1.5-1.7 1.5.8 1.5 1.7-.7 1.7-1.5 1.7Zm5 0c-.8 0-1.5-.8-1.5-1.7s.7-1.7 1.5-1.7 1.5.8 1.5 1.7-.7 1.7-1.5 1.7Z"/></svg>
+      Discord: _bfz_
+    </button>
+    <span class="copied" id="copiedMsg">Copied!</span>
+  </div>
+</main>
+<script>
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+// floating neon cube background
+const cv=document.getElementById('bg'),cx=cv.getContext('2d');let W,H,B=[];
+const cols=['#00e5ff','#7c5cff','#39ff88','#ff3d6e'];
+function size(){W=cv.width=innerWidth;H=cv.height=innerHeight;B=[];
+ for(let i=0;i<36;i++)B.push({x:Math.random()*W,y:Math.random()*H,s:8+Math.random()*34,r:Math.random()*6,v:(Math.random()-.5)*.004,vy:.15+Math.random()*.3,c:cols[i%4]})}
+size();addEventListener('resize',size);
+function draw(){cx.clearRect(0,0,W,H);
+ for(const b of B){b.y-=b.vy;if(b.y<-40){b.y=H+40;b.x=Math.random()*W}b.r+=b.v;
+  cx.save();cx.translate(b.x,b.y);cx.rotate(b.r);cx.globalAlpha=.14;cx.strokeStyle=b.c;cx.fillStyle=b.c;cx.lineWidth=1.5;
+  cx.strokeRect(-b.s/2,-b.s/2,b.s,b.s);cx.globalAlpha*=.3;cx.fillRect(-b.s/2,-b.s/2,b.s,b.s);cx.restore()}
+ if(!reduce)requestAnimationFrame(draw)}
+requestAnimationFrame(draw);
+// cursor + glow
+const dot=document.getElementById('dot'),ring=document.getElementById('ring'),glow=document.getElementById('glow');
+let mx=innerWidth/2,my=innerHeight/2,rx=mx,ry=my;
+addEventListener('pointermove',e=>{mx=e.clientX;my=e.clientY;dot.style.transform=`translate(${mx}px,${my}px)`;glow.style.transform=`translate(${mx}px,${my}px)`});
+(function f(){rx+=(mx-rx)*.15;ry+=(my-ry)*.15;ring.style.transform=`translate(${rx}px,${ry}px)`;requestAnimationFrame(f)})();
+document.querySelectorAll('button').forEach(el=>{el.addEventListener('pointerenter',()=>ring.classList.add('big'));el.addEventListener('pointerleave',()=>ring.classList.remove('big'))});
+// discord copy
+const dcBtn=document.getElementById('dcBtn'),copied=document.getElementById('copiedMsg');
+dcBtn.addEventListener('click',async()=>{
+ try{await navigator.clipboard.writeText('_bfz_');}catch(e){}
+ copied.classList.add('show');setTimeout(()=>copied.classList.remove('show'),1400);
+});
+// countdown
+const TOTAL=10*60*60,end=Date.now()+TOTAL*1000;
+const hEl=document.getElementById('h'),mEl=document.getElementById('m'),sEl=document.getElementById('s'),fill=document.getElementById('fill');
+function pad(n){return String(n).padStart(2,'0')}
+function tick(){
+ const left=Math.max(0,Math.round((end-Date.now())/1000));
+ const h=Math.floor(left/3600),m=Math.floor((left%3600)/60),s=left%60;
+ hEl.textContent=pad(h);mEl.textContent=pad(m);sEl.textContent=pad(s);
+ fill.style.width=(100-(left/TOTAL)*100)+'%';
+ if(left<=0){document.querySelector('.lead').textContent="We're back!";return}
+ setTimeout(tick,250);
+}
+tick();
+</script>
 </body>
 </html>
