@@ -65,50 +65,58 @@ def extract_and_clean_cookie(raw_input):
         
     return cleaned
 
-def get_working_session(roblosecurity):
-    session = requests.Session()
-    if roblosecurity:
-        session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com", path="/")
-    
-    # Spoofed browser-matching headers to bypass security flagging
-    session.headers.update({
-        "Accept": "*/*",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
-        "Accept-Language": "en-US,en;q=0.9,ar;q=0.8,en-GB;q=0.7",
-        "Connection": "close",
-        "Content-Type": "application/json",
-        "Origin": "https://www.roblox.com",
-        "Referer": "https://www.roblox.com/",
-        "Sec-Ch-Ua": '"Google Chrome";v="124", "Chromium";v="124", "Not-A.Brand";v="24"',
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    })
-
-    manual_proxy = os.environ.get('PROXY_URL')
-    test_proxies = [manual_proxy] if manual_proxy else []
-    
+def get_working_session_with_cookie_rotation(roblosecurity):
+    """
+    Cycles through proxy nodes, binding a fresh session and testing authentication 
+    to prevent instant cookie revocation.
+    """
     shuffled_proxies = list(PROXIES_TO_TRY)
     random.shuffle(shuffled_proxies)
-    test_proxies.extend(shuffled_proxies)
 
-    for p in test_proxies:
-        if not p:
-            continue
+    for p in shuffled_proxies:
+        session = requests.Session()
+        session.headers.update({
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Accept-Language": "en-US,en;q=0.9,ar;q=0.8,en-GB;q=0.7",
+            "Connection": "close",
+            "Content-Type": "application/json",
+            "Origin": "https://www.roblox.com",
+            "Referer": "https://www.roblox.com/",
+            "Sec-Ch-Ua": '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+        })
+
         proxy_dict = {"http": p, "https": p}
+        session.proxies = proxy_dict
+
         try:
-            session.proxies = proxy_dict
+            # Warm up connection on current proxy IP
+            session.get("https://www.roblox.com/home", timeout=4)
+            
+            if roblosecurity:
+                session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com", path="/")
+
+            # Test authentication through this specific proxy node
             test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=4)
             if test_res.status_code == 200:
-                return session
+                # Capture any rotated cookie set-cookie headers or tokens returned during handshake
+                return session, test_res
         except Exception:
             continue
 
-    session.proxies = {}
-    return session
+    # Fallback to direct connection if all proxy rotations fail
+    fallback_session = requests.Session()
+    fallback_session.proxies = {}
+    if roblosecurity:
+        fallback_session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com", path="/")
+    fallback_res = fallback_session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
+    return fallback_session, fallback_res
 
 def main():
     if len(sys.argv) < 2:
@@ -122,9 +130,7 @@ def main():
     if not raw_cookie:
         sys.exit(0)
 
-    session = get_working_session(raw_cookie)
-
-    auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
+    session, auth_res = get_working_session_with_cookie_rotation(raw_cookie)
     if auth_res.status_code != 200:
         sys.exit(1)
     
