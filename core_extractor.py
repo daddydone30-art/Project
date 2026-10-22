@@ -3,7 +3,14 @@ import os
 import re
 import random
 from datetime import datetime, timezone
-from curl_cffi import requests
+
+# Safe import fallback for curl_cffi / requests
+try:
+    from curl_cffi import requests
+    USE_CURL_CFFI = True
+except ImportError:
+    import requests
+    USE_CURL_CFFI = False
 
 # --- Webshare Authenticated Proxies ---
 RAW_WEBSHARE_PROXIES = [
@@ -53,8 +60,10 @@ def extract_and_clean_cookie(raw_input):
     return cleaned
 
 def get_working_session(roblosecurity):
-    # curl_cffi session with Chrome TLS impersonation to bypass bot firewalls
-    session = requests.Session(impersonate="chrome124")
+    if USE_CURL_CFFI:
+        session = requests.Session(impersonate="chrome124")
+    else:
+        session = requests.Session()
     
     headers = {
         "Accept": "*/*",
@@ -64,12 +73,6 @@ def get_working_session(roblosecurity):
         "Content-Type": "application/json",
         "Origin": "https://www.roblox.com",
         "Referer": "https://www.roblox.com/",
-        "Sec-Ch-Ua": '"Google Chrome";v="124", "Chromium";v="124", "Not-A.Brand";v="24"',
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
 
@@ -88,23 +91,19 @@ def get_working_session(roblosecurity):
         proxy_dict = {"http": p, "https": p}
         try:
             session.proxies = proxy_dict
-            # Warm up request via proxy
-            session.get("https://www.roblox.com/home", headers=headers, timeout=4)
-            
-            # Test authentication using curl_cffi impersonation
-            test_res = session.get("https://users.roblox.com/v1/users/authenticated", headers=headers, cookies=cookies, timeout=4)
+            if USE_CURL_CFFI:
+                session.get("https://www.roblox.com/home", headers=headers, timeout=4)
+                test_res = session.get("https://users.roblox.com/v1/users/authenticated", headers=headers, cookies=cookies, timeout=4)
+            else:
+                session.cookies.update(cookies)
+                test_res = session.get("https://users.roblox.com/v1/users/authenticated", headers=headers, timeout=4)
+
             if test_res.status_code == 200:
                 return session, cookies
         except Exception:
             continue
 
-    # Fallback to direct connection if proxies fail
     session.proxies = {}
-    try:
-        session.get("https://www.roblox.com/home", headers=headers, timeout=4)
-    except Exception:
-        pass
-        
     return session, cookies
 
 def main():
@@ -132,7 +131,10 @@ def main():
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
 
-    auth_res = session.get("https://users.roblox.com/v1/users/authenticated", headers=headers, cookies=cookies, timeout=5)
+    if not USE_CURL_CFFI:
+        session.cookies.update(cookies)
+
+    auth_res = session.get("https://users.roblox.com/v1/users/authenticated", headers=headers, cookies=cookies if USE_CURL_CFFI else None, timeout=5)
     if auth_res.status_code != 200:
         sys.exit(1)
     
@@ -146,7 +148,7 @@ def main():
 
     def safe_get(url, params=None):
         try:
-            r = session.get(url, headers=headers, cookies=cookies, params=params, timeout=5)
+            r = session.get(url, headers=headers, cookies=cookies if USE_CURL_CFFI else None, params=params, timeout=5)
             if r.status_code == 200:
                 return r.json()
         except Exception:
@@ -196,30 +198,30 @@ def main():
     lim_count = len(limiteds)
 
     try:
-        prem_res = session.get(
-            f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership",
-            headers=headers, cookies=cookies, timeout=5
-        )
+        if USE_CURL_CFFI:
+            prem_res = session.get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership", headers=headers, cookies=cookies, timeout=5)
+        else:
+            prem_res = session.get(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership", headers=headers, timeout=5)
         premium = prem_res.json() is True
     except Exception:
         premium = False
 
     def check_bundle(bundle_id):
         try:
-            r = session.get(
-                f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/{bundle_id}/is-owned",
-                headers=headers, cookies=cookies, timeout=5
-            )
+            if USE_CURL_CFFI:
+                r = session.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/{bundle_id}/is-owned", headers=headers, cookies=cookies, timeout=5)
+            else:
+                r = session.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/{bundle_id}/is-owned", headers=headers, timeout=5)
             return r.json() is True
         except Exception:
             return False
 
     def check_asset(asset_id):
         try:
-            r = session.get(
-                f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}/is-owned",
-                headers=headers, cookies=cookies, timeout=5
-            )
+            if USE_CURL_CFFI:
+                r = session.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}/is-owned", headers=headers, cookies=cookies, timeout=5)
+            else:
+                r = session.get(f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}/is-owned", headers=headers, timeout=5)
             return r.json() is True
         except Exception:
             return False
