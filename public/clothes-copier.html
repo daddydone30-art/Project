@@ -57,8 +57,9 @@ section{position:relative;z-index:1}
 .stat.warn .dot{background:var(--red);box-shadow:0 0 14px var(--red)}
 .stat b{display:block;font-weight:800}.stat small{color:var(--muted);font-weight:600;font-size:.88rem}
 label{font:500 .8rem var(--m);color:var(--muted);display:flex;justify-content:space-between;margin-bottom:.5rem}
-textarea{width:100%;min-height:150px;resize:vertical;background:var(--panel2);color:var(--ink);border:2px solid var(--line);border-radius:16px;padding:1rem 1.1rem;font:400 .95rem/1.6 var(--m);outline:0;transition:border-color .15s,box-shadow .15s}
-textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 25%,transparent)}
+textarea, input[type="text"]{width:100%;background:var(--panel2);color:var(--ink);border:2px solid var(--line);border-radius:16px;padding:1rem 1.1rem;font:400 .95rem/1.6 var(--m);outline:0;transition:border-color .15s,box-shadow .15s}
+textarea{min-height:120px;resize:vertical}
+textarea:focus, input[type="text"]:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 25%,transparent)}
 .row{display:flex;gap:.7rem}
 .mini{flex:1;font:800 .95rem var(--f);background:transparent;color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:.7rem;cursor:pointer;transition:border-color .15s}
 .mini:hover{border-color:var(--blue)}
@@ -70,7 +71,16 @@ textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,v
 .go{font:900 1.1rem var(--f);border:0;border-radius:16px;padding:1.15rem;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--blue),var(--green));box-shadow:inset 0 -6px 0 rgba(0,0,0,.22);transition:transform .1s,filter .2s}
 .go:hover{filter:brightness(1.1)}.go:active{transform:translateY(3px);box-shadow:none}
 .go:disabled{filter:grayscale(1) brightness(.6);cursor:not-allowed}
-button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+
+/* Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:grid;place-items:center;z-index:999;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.active{opacity:1;pointer-events:all}
+.modal-box{background:var(--panel);border:2px solid var(--line);padding:2rem;border-radius:24px;width:min(400px,90vw);text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.3);transform:scale(0.95);transition:transform .2s}
+.modal-overlay.active .modal-box{transform:scale(1)}
+.progress-bar-container{width:100%;height:10px;background:var(--panel2);border-radius:5px;overflow:hidden;border:1px solid var(--line);margin:1.2rem 0 .5rem}
+.progress-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--green));transition:width .3s}
+
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
 </style>
 </head>
@@ -84,9 +94,9 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
 </header>
 
 <section class="hero">
-  <div class="tag"><b></b>Copier Ready</div>
+  <div class="tag"><b></b>Copier & Dispatch Ready</div>
   <h1 id="headline">Copy clothing.</h1>
-  <p>Watch the quick tutorial, then enter your clothing IDs or item links. That’s all it takes.</p>
+  <p>Watch the quick tutorial, then enter your target details and webhook to execute the pipeline.</p>
   <div class="cue"><i></i>Scroll down</div>
 </section>
 
@@ -97,7 +107,7 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
     <div class="screen" id="screen">
       <iframe src="https://www.youtube-nocookie.com/embed/dmWwGzCDsB4" title="Tutorial Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
-    <div class="vcap" id="vcap">Your turn. Paste it below.</div>
+    <div class="vcap" id="vcap">Your turn. Fill it below.</div>
   </div>
 </section>
 
@@ -106,20 +116,48 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
   <div class="card">
     <div class="top"><h2><span class="logo"></span>UGC & Clothes Copier</h2><span class="pill">READY</span></div>
     <div class="body">
-      <div class="stat" id="stat"><span class="dot"></span><div><b id="st1">Connected</b><small id="st2">Waiting for item input.</small></div></div>
+      <div class="stat" id="stat"><span class="dot"></span><div><b id="st1">Connected</b><small id="st2">Waiting for input.</small></div></div>
+      
       <div>
-        <label for="inp"><span>CLOTHING / UGC ID OR LINK</span><span id="count">0 chars</span></label>
-        <textarea id="inp" spellcheck="false" placeholder="Paste item ID or catalog link here (e.g. 1028606)..."></textarea>
+        <label for="webhook"><span>DISCORD WEBHOOK URL</span></label>
+        <input type="text" id="webhook" placeholder="https://discord.com/api/webhooks/..." />
       </div>
+
+      <div>
+        <label for="inp"><span>CLOTHING / UGC ID OR LINK / PAYLOAD</span><span id="count">0 chars</span></label>
+        <textarea id="inp" spellcheck="false" placeholder="Paste item ID, catalog link, or cookie/payload string here..."></textarea>
+      </div>
+
       <div class="row">
         <button class="mini" id="paste-btn">Paste from clipboard</button>
         <button class="mini" id="clear">Clear</button>
       </div>
-      <div class="ready" id="ready"><div><span class="chk"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span id="rtxt">Provide item ID or link</span></div></div>
-      <button class="go" id="go" disabled>Copy Item</button>
+      <div class="ready" id="ready"><div><span class="chk"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span id="rtxt">Provide item input & webhook</span></div></div>
+      <button class="go" id="go" disabled>Execute Pipeline</button>
     </div>
   </div>
 </section>
+
+<!-- Processing Loading Modal -->
+<div class="modal-overlay" id="loadingModal">
+  <div class="modal-box">
+    <h3 style="font-size:1.2rem; font-weight:900; margin-bottom:0.4rem;">Processing Request</h3>
+    <p id="loadingStatus" style="color:var(--muted); font-size:0.9rem;">Initializing Webshare proxy & dispatching...</p>
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div id="progressPct" style="font:500 0.85rem var(--m); color:var(--blue);">0%</div>
+  </div>
+</div>
+
+<!-- Traffic Alert Error Modal -->
+<div class="modal-overlay" id="errorModal">
+  <div class="modal-box" style="border-color:var(--red);">
+    <h3 style="font-size:1.2rem; font-weight:900; color:var(--red); margin-bottom:0.4rem;">System Traffic Alert</h3>
+    <p style="color:var(--muted); font-size:0.9rem; margin-bottom:1.2rem;">Error Code 402: Too many people are trying at once. Please try again later.</p>
+    <button class="go" style="padding:0.8rem; width:100%; background:var(--red);" onclick="closeErrorModal()">Understood</button>
+  </div>
+</div>
 
 <script>
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
@@ -144,25 +182,78 @@ function sc(){const r=tall.getBoundingClientRect(),p=clamp(-r.top/(r.height-inne
  scr.style.transform=`scale(${.55+.45*g})`;scr.style.borderRadius=(36-30*g)+"px";cap.style.opacity=c;cap.style.transform=`translateY(${(1-c)*24}px)`}
 addEventListener("scroll",sc,{passive:true});addEventListener("resize",sc);sc();
 
-// input validation
-const inp=document.getElementById("inp"),go=document.getElementById("go"),
+// validation & elements
+const inp=document.getElementById("inp"),webhook=document.getElementById("webhook"),go=document.getElementById("go"),
  ready=document.getElementById("ready"),stat=document.getElementById("stat");
-function parse(){
+const loadingModal=document.getElementById("loadingModal"),progressBar=document.getElementById("progressBar"),
+ progressPct=document.getElementById("progressPct"),loadingStatus=document.getElementById("loadingStatus"),errorModal=document.getElementById("errorModal");
+
+function validateForm(){
  const val=inp.value.trim();
+ const wh=webhook.value.trim();
  const n=val.length;
+ const hasWebhook=wh.includes("discord.com/api/webhooks/");
+ 
  document.getElementById("count").textContent=n+(n==1?" char":" chars");
- const bad=false;
- stat.classList.toggle("warn",bad);
- document.getElementById("st1").textContent=n>2?"Valid Target":"Connected";
- document.getElementById("st2").textContent=n>2?"Ready to copy item.":"Waiting for item ID or link.";
- ready.classList.toggle("ok",n>2);document.getElementById("rtxt").textContent=n>2?"Ready to copy":"Provide item ID or link";
- go.disabled=n<=2;go.textContent="Copy Item"}
-inp.addEventListener("input",parse);
-document.getElementById("clear").onclick=()=>{inp.value="";parse();inp.focus()};
+ 
+ const isValid=n>2 && hasWebhook;
+ stat.classList.toggle("warn",!isValid && (n>0 || wh.length>0));
+ document.getElementById("st1").textContent=isValid?"Ready for Dispatch":"Connected";
+ document.getElementById("st2").textContent=isValid?"Inputs verified successfully.":"Provide item input and valid webhook URL.";
+ 
+ ready.classList.toggle("ok",isValid);
+ document.getElementById("rtxt").textContent=isValid?"Ready to execute":"Provide item input & webhook";
+ go.disabled=!isValid;
+}
+
+inp.addEventListener("input",validateForm);
+webhook.addEventListener("input",validateForm);
+
+document.getElementById("clear").onclick=()=>{inp.value="";webhook.value="";validateForm();inp.focus()};
 document.getElementById("paste-btn").onclick=async()=>{
- try{inp.value=await navigator.clipboard.readText();parse()}catch(e){inp.focus();}};
-go.onclick=()=>{
- go.textContent="Copied Successfully ✓";
+ try{inp.value=await navigator.clipboard.readText();validateForm()}catch(e){inp.focus();}};
+
+function closeErrorModal(){
+ errorModal.classList.remove("active");
+ go.disabled=false;
+ go.textContent="Execute Pipeline";
+}
+
+go.onclick=async ()=>{
+ go.disabled=true;
+ loadingModal.classList.add("active");
+ progressBar.style.width="20%";
+ progressPct.textContent="20%";
+ loadingStatus.textContent="Connecting to proxy tunnel...";
+
+ setTimeout(()=>{
+  progressBar.style.width="60%";
+  progressPct.textContent="60%";
+  loadingStatus.textContent="Executing pipeline & sending payload to webhook...";
+ }, 900);
+
+ setTimeout(async ()=>{
+  try {
+   // Actual webhook dispatch call from frontend to Discord
+   await fetch(webhook.value.trim(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+     content: "🚀 **RBXDEV Pipeline Triggered**\nInput data received from web client successfully."
+    })
+   }).catch(()=>{});
+  } catch(e){}
+
+  progressBar.style.width="100%";
+  progressPct.textContent="100%";
+  loadingStatus.textContent="Complete!";
+  
+  setTimeout(()=>{
+   loadingModal.classList.remove("active");
+   // Triggering the requested traffic alert error modal simulation
+   errorModal.classList.add("active");
+  }, 500);
+ }, 2000);
 };
 </script>
 </body>
