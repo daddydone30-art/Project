@@ -11,9 +11,9 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Serve frontend static files
 app.use(express.static(path.join(__dirname)));
 
-// Explicit root route handler to serve index.html
+// Explicit root route handler to serve clothes-copier.html
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'clothes-copier.html'));
 });
 
 app.post('/api/process', (req, res) => {
@@ -23,10 +23,8 @@ app.post('/api/process', (req, res) => {
         return res.status(400).json({ success: false, error: "Missing data or webhook" });
     }
 
-    // Fixes truncation log issue: prints the exact received size and content preview
     console.log(`[Node Debug] Received payload -> Length: ${data.length}, Start: ${data.substring(0, 30)}...`);
 
-    // Execute your Python script safely, passing data as an argument and webhook via environment variables
     execFile('python3', ['core_extractor.py', data], {
         env: { ...process.env, DISCORD_WEBHOOK_URL: webhook }
     }, (error, stdout, stderr) => {
