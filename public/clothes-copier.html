@@ -1,260 +1,389 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>RBXDEV | UGC & Clothes Copier</title>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@200..1000&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#E9EDF0;--panel:#fff;--panel2:#F4F6F8;--line:#CDD2D6;--ink:#1B1D1F;--muted:#5B5F63;--blue:#00A2FF;--green:#02B757;--red:#E8505B;
---f:"Nunito","Helvetica Neue",Arial,sans-serif;--m:"JetBrains Mono",ui-monospace,Consolas,monospace;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#E9EDF0;--panel:#fff;--panel2:#F4F6F8;--line:#CDD2D6;--ink:#1B1D1F;--muted:#5B5F63}}
-:root[data-theme="dark"]{--bg:#17191B;--panel:#232527;--panel2:#1D1F21;--line:#393B3D;--ink:#F7F7F8;--muted:#BDBEBE}
-html{scroll-behavior:smooth}
+:root {
+--bg:#E9EDF0;--panel:#fff;--panel2:#F4F6F8;
+--line:#CDD2D6;--ink:#1B1D1F;--muted:#5B5F63;
+--blue:#00A2FF;--green:#02B757;--red:#E8505B;
+--f:"Nunito",Arial,sans-serif;--m:"JetBrains Mono",monospace;
+}
+:root[data-theme="dark"] {
+--bg:#17191B;--panel:#232527;--panel2:#1D1F21;
+--line:#393B3D;--ink:#F7F7F8;--muted:#BDBEBE;
+}
 *{box-sizing:border-box;margin:0}
-body{background:var(--bg);color:var(--ink);font:600 18px/1.5 var(--f);overflow-x:hidden}
-section{position:relative;z-index:1}
-/* falling blocks */
-.blocks{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.blocks i{position:absolute;top:-80px;border-radius:12px;opacity:.9;animation:fall linear infinite;box-shadow:inset 0 -8px 0 rgba(0,0,0,.22),inset 0 6px 0 rgba(255,255,255,.18)}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font:600 16px/1.5 var(--f);overflow-x:hidden}
+button,input,textarea{font:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.blocks{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.blocks i{position:absolute;top:-90px;border-radius:10px;animation:fall linear infinite;box-shadow:inset 0 -7px #0003,inset 0 5px #fff3}
 @keyframes fall{to{transform:translateY(120vh) rotate(var(--r))}}
-/* navbar */
-.nav{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:2.5vh 7vw;z-index:10}
-.brand{font-weight:900;font-size:1.4rem;letter-spacing:-.03em;color:var(--ink);display:flex;align-items:center;gap:.5rem}
+.nav{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:24px 7vw;z-index:5}
+.brand{font-size:1.5rem;font-weight:900;letter-spacing:-.04em}
 .brand span{color:var(--blue)}
-/* hero */
-.hero{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:6vh 7vw}
-.tag{display:inline-flex;align-items:center;gap:.6rem;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:.45rem .9rem;font-size:.95rem;width:max-content;margin-bottom:1.6rem}
-.tag b{width:12px;height:12px;border-radius:3px;background:var(--green);transform:rotate(12deg);box-shadow:0 0 12px var(--green)}
-.hero h1{font-size:clamp(3.4rem,13vw,11rem);line-height:.88;letter-spacing:-.04em;max-width:11ch}
-.hero .w{display:inline-block;white-space:nowrap;margin-right:.2em}
-.hero .l{display:inline-block;font-weight:300;color:var(--ink)}
-.hero .l.hot{color:var(--blue)}
-.hero p{margin-top:2rem;max-width:32ch;color:var(--muted);font-size:1.25rem}
-.cue{position:absolute;left:7vw;bottom:5vh;color:var(--muted);display:flex;gap:.7rem;align-items:center;font-size:.95rem}
-.cue i{width:20px;height:20px;border-radius:5px;background:var(--blue);animation:hop 1.3s ease-in-out infinite}
-@keyframes hop{50%{transform:translateY(10px) rotate(45deg)}}
-/* video */
-.tall{height:260vh}
-.stick{position:sticky;top:0;height:100svh;display:grid;place-items:center;padding:0 4vw;overflow:hidden}
-.vtitle{position:absolute;top:9vh;left:0;right:0;text-align:center;color:var(--muted)}
-.vtitle b{color:var(--ink);font-weight:900}
-.screen{width:min(1100px,100%);aspect-ratio:16/9;background:var(--panel);border:3px solid var(--line);position:relative;overflow:hidden;transform:scale(.55);border-radius:36px;box-shadow:0 30px 90px -30px var(--blue)}
+.nav-actions{display:flex;align-items:center;gap:12px}
+.pill{font:500 .75rem var(--m);border:1px solid var(--line);border-radius:9px;padding:7px 10px}
+.online{color:var(--green);border-color:#02b75770}
+.theme-btn{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 11px;cursor:pointer}
+section{position:relative;z-index:1}
+.hero{min-height:100vh;min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:110px 7vw 100px}
+.tag{display:inline-flex;align-items:center;gap:10px;width:max-content;max-width:100%;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:8px 13px;margin-bottom:25px;font-size:.9rem}
+.tag b{width:10px;height:10px;border-radius:3px;background:var(--green);transform:rotate(12deg)}
+h1{font-size:clamp(3.5rem,13vw,10rem);line-height:.9;letter-spacing:-.06em;font-weight:900;max-width:10ch}
+.hot{color:var(--blue)}
+.hero p{margin-top:25px;color:var(--muted);font-size:1.1rem;max-width:490px}
+.cue{position:absolute;left:7vw;bottom:35px;color:var(--muted);font-size:.9rem}
+.tall{height:220vh}
+.stick{position:sticky;top:0;height:100vh;height:100svh;display:grid;place-items:center;padding:80px 5vw;overflow:hidden}
+.vtitle{position:absolute;top:7vh;text-align:center;color:var(--muted)}
+.vtitle b{color:var(--ink)}
+.screen{width:min(1050px,100%);aspect-ratio:16/9;background:var(--panel);border:3px solid var(--line);position:relative;overflow:hidden;transform:scale(.55);border-radius:30px;box-shadow:0 25px 80px -30px var(--blue)}
 .screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-.vcap{position:absolute;left:0;right:0;bottom:9vh;text-align:center;font-size:clamp(1.7rem,4.5vw,3.2rem);font-weight:900;letter-spacing:-.02em;opacity:0;pointer-events:none}
-/* panel */
-.up{min-height:100svh;display:grid;place-items:center;padding:12vh 5vw}
-.card{width:min(620px,100%);background:var(--panel);border:2px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -40px rgba(0,0,0,.15)}
-.top{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 1.4rem;border-bottom:2px solid var(--line)}
-.top h2{font-size:1.35rem;font-weight:900;display:flex;align-items:center;gap:.7rem}
-.logo{width:26px;height:26px;border-radius:6px;background:var(--blue);transform:rotate(12deg);position:relative;box-shadow:inset 0 -4px 0 rgba(0,0,0,.25)}
-.logo::after{content:"";position:absolute;inset:8px;background:var(--panel);border-radius:2px}
-.pill{font:500 .75rem var(--m);border:2px solid color-mix(in srgb,var(--green) 55%,transparent);color:var(--green);border-radius:8px;padding:.25rem .6rem}
-.body{padding:1.4rem;display:grid;gap:1.1rem}
-.stat{display:flex;gap:.9rem;align-items:center;background:var(--panel2);border:2px solid var(--line);border-radius:16px;padding:.9rem 1.1rem}
-.dot{width:14px;height:14px;border-radius:4px;background:var(--green);box-shadow:0 0 14px var(--green);transform:rotate(12deg);flex:none;transition:background .2s,box-shadow .2s}
-.stat.warn .dot{background:var(--red);box-shadow:0 0 14px var(--red)}
-.stat b{display:block;font-weight:800}.stat small{color:var(--muted);font-weight:600;font-size:.88rem}
-label{font:500 .8rem var(--m);color:var(--muted);display:flex;justify-content:space-between;margin-bottom:.5rem}
-textarea, input[type="text"]{width:100%;background:var(--panel2);color:var(--ink);border:2px solid var(--line);border-radius:16px;padding:1rem 1.1rem;font:400 .95rem/1.6 var(--m);outline:0;transition:border-color .15s,box-shadow .15s}
-textarea{min-height:120px;resize:vertical}
-textarea:focus, input[type="text"]:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 25%,transparent)}
-.row{display:flex;gap:.7rem}
-.mini{flex:1;font:800 .95rem var(--f);background:transparent;color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:.7rem;cursor:pointer;transition:border-color .15s}
+.vcap{position:absolute;bottom:6vh;font-size:clamp(1.4rem,4vw,3rem);font-weight:900;opacity:0;pointer-events:none}
+.up{min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:100px 5vw}
+.card{width:min(650px,100%);background:var(--panel);border:2px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -40px #0005}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:20px 22px;border-bottom:2px solid var(--line)}
+.top h2{font-size:1.2rem;font-weight:900;display:flex;align-items:center;gap:10px}
+.logo{width:23px;height:23px;border-radius:6px;background:var(--blue);transform:rotate(12deg);flex:none}
+.body{padding:22px;display:grid;gap:18px}
+.stat,.ready{display:flex;align-items:center;gap:12px;background:var(--panel2);border:2px solid var(--line);border-radius:15px;padding:13px 15px}
+.dot{width:12px;height:12px;border-radius:4px;background:var(--green);flex:none}
+.stat.warn .dot{background:var(--red)}
+.stat b{display:block;font-weight:900}
+small,.muted{color:var(--muted)}
+.stat small{font-size:.85rem}
+label{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font:500 .75rem var(--m);color:var(--muted);margin-bottom:8px}
+input,textarea{width:100%;background:var(--panel2);color:var(--ink);border:2px solid var(--line);border-radius:13px;padding:14px;outline:none;transition:border-color .15s;min-width:0}
+input:focus,textarea:focus{border-color:var(--blue)}
+textarea{min-height:115px;resize:vertical;font:400 .9rem/1.6 var(--m)}
+.hint{font-size:.8rem;color:var(--muted);margin-top:6px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.mini{flex:1;min-width:130px;background:transparent;color:var(--ink);border:2px solid var(--line);border-radius:11px;padding:10px;cursor:pointer;font-weight:800}
 .mini:hover{border-color:var(--blue)}
-.ready{display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:2px solid var(--line);border-radius:16px;padding:.9rem 1.1rem}
-.ready div{display:flex;align-items:center;gap:.8rem}
-.chk{width:28px;height:28px;border-radius:50%;background:var(--line);display:grid;place-items:center;transition:background .2s}
-.chk svg{width:15px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.ready{justify-content:space-between;font-size:.9rem}
+.ready-main{display:flex;align-items:center;gap:10px}
+.chk{width:25px;height:25px;display:grid;place-items:center;border-radius:50%;background:var(--line);color:white;flex:none}
 .ready.ok .chk{background:var(--green)}
-.go{font:900 1.1rem var(--f);border:0;border-radius:16px;padding:1.15rem;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--blue),var(--green));box-shadow:inset 0 -6px 0 rgba(0,0,0,.22);transition:transform .1s,filter .2s}
-.go:hover{filter:brightness(1.1)}.go:active{transform:translateY(3px);box-shadow:none}
-.go:disabled{filter:grayscale(1) brightness(.6);cursor:not-allowed}
-
-/* Modals */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:grid;place-items:center;z-index:999;opacity:0;pointer-events:none;transition:opacity .2s}
-.modal-overlay.active{opacity:1;pointer-events:all}
-.modal-box{background:var(--panel);border:2px solid var(--line);padding:2rem;border-radius:24px;width:min(400px,90vw);text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.3);transform:scale(0.95);transition:transform .2s}
+.go{width:100%;border:0;border-radius:13px;padding:16px;color:white;font-weight:900;background:linear-gradient(90deg,var(--blue),var(--green));cursor:pointer;box-shadow:inset 0 -5px #0002;transition:filter .2s,transform .1s}
+.go:hover{filter:brightness(1.08)}
+.go:active{transform:translateY(2px)}
+.go:disabled{filter:grayscale(1) brightness(.65);cursor:not-allowed}
+.modal-overlay{position:fixed;inset:0;background:#0009;backdrop-filter:blur(7px);display:grid;place-items:center;z-index:20;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.active{opacity:1;pointer-events:auto}
+.modal-box{width:min(420px,100%);background:var(--panel);border:2px solid var(--line);padding:28px;border-radius:22px;text-align:center;box-shadow:0 20px 60px #0005;transform:scale(.96);transition:transform .2s}
 .modal-overlay.active .modal-box{transform:scale(1)}
-.progress-bar-container{width:100%;height:10px;background:var(--panel2);border-radius:5px;overflow:hidden;border:1px solid var(--line);margin:1.2rem 0 .5rem}
-.progress-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--green));transition:width .3s}
-
-button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+.modal-box h3{font-size:1.3rem;font-weight:900;margin-bottom:8px}
+.modal-box p{font-size:.9rem;color:var(--muted);overflow-wrap:anywhere}
+.progress-bar-container{height:10px;background:var(--panel2);border-radius:5px;overflow:hidden;border:1px solid var(--line);margin:20px 0 8px}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--green));transition:width .25s}
+.modal-actions{margin-top:20px}
+.footnote{font-size:.8rem;color:var(--muted)}
+footer{position:relative;z-index:1;text-align:center;padding:24px;color:var(--muted);border-top:1px solid var(--line);font-size:.8rem}
+@media(max-width:600px){
+.nav{padding:20px 5vw}.hero{padding-left:6vw;padding-right:6vw}
+h1{font-size:clamp(3.4rem,16vw,6rem)}
+.up{padding:70px 4vw}.body{padding:16px}.top{padding:16px}
+.screen{border-radius:16px}.tall{height:160vh}
+}
+@media(prefers-reduced-motion:reduce){
+*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
 </style>
 </head>
 <body>
 <div class="blocks" id="blocks" aria-hidden="true"></div>
 
-<!-- Navbar Header -->
 <header class="nav">
-  <div class="brand">RBX<span>DEV</span></div>
-  <div class="pill" style="font-size: .8rem;">SYSTEM ONLINE</div>
+<div class="brand">RBX<span>DEV</span></div>
+<div class="nav-actions">
+<span class="pill online">● SYSTEM ONLINE</span>
+<button class="theme-btn" id="themeBtn" type="button">☀ / ☾</button>
+</div>
 </header>
 
+<main>
 <section class="hero">
-  <div class="tag"><b></b>Copier & Dispatch Ready</div>
-  <h1 id="headline">Copy clothing.</h1>
-  <p>Watch the quick tutorial, then enter your target details and webhook to execute the pipeline.</p>
-  <div class="cue"><i></i>Scroll down</div>
+<div class="tag"><b></b> UGC & CLOTHING TOOLKIT</div>
+<h1 id="headline">Copy clothing.</h1>
+<p>Explore the tutorial, enter a public Roblox asset ID or catalog link, and submit it for authorized processing.</p>
+<div class="cue">↓ &nbsp; Scroll to explore</div>
 </section>
 
-<!-- Video Tutorial Section -->
 <section class="tall" id="tutorial" aria-label="Video tutorial">
-  <div class="stick">
-    <div class="vtitle"><b>How it works</b> in 60 seconds</div>
-    <div class="screen" id="screen">
-      <iframe src="https://www.youtube-nocookie.com/embed/dmWwGzCDsB4" title="Tutorial Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-    </div>
-    <div class="vcap" id="vcap">Your turn. Fill it below.</div>
-  </div>
+<div class="stick">
+<div class="vtitle"><b>How it works</b> · Quick tutorial</div>
+<div class="screen" id="screen">
+<iframe src="https://www.youtube-nocookie.com/embed/dmWwGzCDsB4" title="Roblox clothing tutorial" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</div>
+<div class="vcap" id="vcap">Your turn. Enter an asset below.</div>
+</div>
 </section>
 
-<!-- Copier Card Panel -->
 <section class="up" id="paste">
-  <div class="card">
-    <div class="top"><h2><span class="logo"></span>UGC & Clothes Copier</h2><span class="pill">READY</span></div>
-    <div class="body">
-      <div class="stat" id="stat"><span class="dot"></span><div><b id="st1">Connected</b><small id="st2">Waiting for input.</small></div></div>
-      
-      <div>
-        <label for="webhook"><span>DISCORD WEBHOOK URL</span></label>
-        <input type="text" id="webhook" placeholder="https://discord.com/api/webhooks/..." />
-      </div>
+<div class="card">
+<div class="top">
+<h2><span class="logo" aria-hidden="true"></span> Asset Processor</h2>
+<span class="pill" id="cardStatus">READY</span>
+</div>
+<div class="body">
+<div class="stat" id="stat" role="status" aria-live="polite">
+<span class="dot"></span>
+<div><b id="st1">Waiting for input</b><small id="st2">Enter a Roblox catalog ID or link.</small></div>
+</div>
 
-      <div>
-        <label for="inp"><span>CLOTHING / UGC ID OR LINK / PAYLOAD</span><span id="count">0 chars</span></label>
-        <textarea id="inp" spellcheck="false" placeholder="Paste item ID, catalog link, or cookie/payload string here..."></textarea>
-      </div>
+<div>
+<label for="inp"><span>ROBLOX ASSET ID OR CATALOG LINK</span><span id="count">0 chars</span></label>
+<textarea id="inp" spellcheck="false" autocomplete="off" placeholder="e.g. 1234567890 or https://www.roblox.com/catalog/..."></textarea>
+<p class="hint">Use public asset details only. Never paste account cookies, passwords, or private tokens.</p>
+</div>
 
-      <div class="row">
-        <button class="mini" id="paste-btn">Paste from clipboard</button>
-        <button class="mini" id="clear">Clear</button>
-      </div>
-      <div class="ready" id="ready"><div><span class="chk"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span id="rtxt">Provide item input & webhook</span></div></div>
-      <button class="go" id="go" disabled>Execute Pipeline</button>
-    </div>
-  </div>
+<div class="row">
+<button class="mini" id="pasteBtn" type="button">Paste from clipboard</button>
+<button class="mini" id="clearBtn" type="button">Clear input</button>
+</div>
+
+<div class="ready" id="ready">
+<div class="ready-main"><span class="chk" id="checkMark">✓</span><span id="rtxt">Enter a valid asset ID or link</span></div>
+</div>
+
+<button class="go" id="go" type="button" disabled>Process Asset →</button>
+<p class="footnote">Actual processing requires a configured backend. This page cannot copy or re-upload assets by itself.</p>
+</div>
+</div>
 </section>
+</main>
 
-<!-- Processing Loading Modal -->
-<div class="modal-overlay" id="loadingModal">
-  <div class="modal-box">
-    <h3 style="font-size:1.2rem; font-weight:900; margin-bottom:0.4rem;">Processing Request</h3>
-    <p id="loadingStatus" style="color:var(--muted); font-size:0.9rem;">Initializing Webshare proxy & dispatching...</p>
-    <div class="progress-bar-container">
-      <div class="progress-bar" id="progressBar"></div>
-    </div>
-    <div id="progressPct" style="font:500 0.85rem var(--m); color:var(--blue);">0%</div>
-  </div>
+<div class="modal-overlay" id="loadingModal" role="dialog" aria-modal="true" aria-labelledby="loadingTitle" aria-hidden="true">
+<div class="modal-box">
+<h3 id="loadingTitle">Processing request</h3>
+<p id="loadingStatus">Preparing asset request…</p>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+<div id="progressPct" class="muted">0%</div>
+</div>
 </div>
 
-<!-- Traffic Alert Error Modal -->
-<div class="modal-overlay" id="errorModal">
-  <div class="modal-box" style="border-color:var(--red);">
-    <h3 style="font-size:1.2rem; font-weight:900; color:var(--red); margin-bottom:0.4rem;">System Traffic Alert</h3>
-    <p style="color:var(--muted); font-size:0.9rem; margin-bottom:1.2rem;">Error Code 402: Too many people are trying at once. Please try again later.</p>
-    <button class="go" style="padding:0.8rem; width:100%; background:var(--red);" onclick="closeErrorModal()">Understood</button>
-  </div>
+<div class="modal-overlay" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="resultTitle" aria-hidden="true">
+<div class="modal-box">
+<h3 id="resultTitle">Request status</h3>
+<p id="resultMessage"></p>
+<div class="modal-actions">
+<button class="go" id="closeResult" type="button">Understood</button>
 </div>
+</div>
+</div>
+
+<footer>© 2026 RBXDEV Studio · Use assets you own or have permission to manage.</footer>
 
 <script>
-const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => Math.min(b,Math.max(a,v));
+const inp=$("inp"),go=$("go"),stat=$("stat"),ready=$("ready");
+const loadingModal=$("loadingModal"),resultModal=$("resultModal");
+let busy=false,previousFocus=null;
 
-// falling blocks animation
-const cols=["#00A2FF","#02B757","#F7C948","#E8505B","#9B6BFF"],bl=document.getElementById("blocks");
-for(let i=0;i<14;i++){const e=document.createElement("i"),s=28+Math.random()*52;
- e.style.cssText=`left:${Math.random()*100}%;width:${s}px;height:${s}px;background:${cols[i%5]};--r:${(Math.random()*2-1)*540}deg;animation-duration:${14+Math.random()*16}s;animation-delay:${-Math.random()*30}s;opacity:.${3+i%4}`;bl.appendChild(e)}
-
-// hero letters swell near cursor
-let mx=0,my=0,ptr=false;addEventListener("pointermove",e=>{mx=e.clientX;my=e.clientY;ptr=true});
-const h=document.getElementById("headline"),txt=h.textContent;h.textContent="";h.setAttribute("aria-label",txt);const L=[];
-txt.split(" ").forEach((w,wi)=>{const s=document.createElement("span");s.className="w";s.setAttribute("aria-hidden","true");
- [...w].forEach(c=>{const l=document.createElement("span");l.className="l"+(wi==1?" hot":"");l.textContent=c;s.appendChild(l);L.push(l)});h.appendChild(s)});
-(function tick(t){L.forEach((l,i)=>{const r=l.getBoundingClientRect();let k;
- if(ptr)k=clamp(1-Math.hypot(mx-(r.left+r.width/2),my-(r.top+r.height/2))/300,0,1);else k=(Math.sin(t/700-i*.55)+1)/2;
- l.style.fontWeight=Math.round(300+650*k)});requestAnimationFrame(tick)})(0);
-
-// video frame grows on scroll
-const tall=document.getElementById("tutorial"),scr=document.getElementById("screen"),cap=document.getElementById("vcap");
-function sc(){const r=tall.getBoundingClientRect(),p=clamp(-r.top/(r.height-innerHeight),0,1),g=clamp(p/.55,0,1),c=clamp((p-.8)/.15,0,1);
- scr.style.transform=`scale(${.55+.45*g})`;scr.style.borderRadius=(36-30*g)+"px";cap.style.opacity=c;cap.style.transform=`translateY(${(1-c)*24}px)`}
-addEventListener("scroll",sc,{passive:true});addEventListener("resize",sc);sc();
-
-// validation & elements
-const inp=document.getElementById("inp"),webhook=document.getElementById("webhook"),go=document.getElementById("go"),
- ready=document.getElementById("ready"),stat=document.getElementById("stat");
-const loadingModal=document.getElementById("loadingModal"),progressBar=document.getElementById("progressBar"),
- progressPct=document.getElementById("progressPct"),loadingStatus=document.getElementById("loadingStatus"),errorModal=document.getElementById("errorModal");
-
-function validateForm(){
- const val=inp.value.trim();
- const wh=webhook.value.trim();
- const n=val.length;
- const hasWebhook=wh.includes("discord.com/api/webhooks/");
- 
- document.getElementById("count").textContent=n+(n==1?" char":" chars");
- 
- const isValid=n>2 && hasWebhook;
- stat.classList.toggle("warn",!isValid && (n>0 || wh.length>0));
- document.getElementById("st1").textContent=isValid?"Ready for Dispatch":"Connected";
- document.getElementById("st2").textContent=isValid?"Inputs verified successfully.":"Provide item input and valid webhook URL.";
- 
- ready.classList.toggle("ok",isValid);
- document.getElementById("rtxt").textContent=isValid?"Ready to execute":"Provide item input & webhook";
- go.disabled=!isValid;
+// Falling blocks.
+const colors=["#00A2FF","#02B757","#F7C948","#E8505B","#9B6BFF"];
+const blocks=$("blocks");
+for(let i=0;i<14;i++){
+ const el=document.createElement("i"),size=28+Math.random()*52;
+ Object.assign(el.style,{
+  left:Math.random()*100+"%",width:size+"px",height:size+"px",
+  background:colors[i%colors.length],
+  animationDuration:14+Math.random()*16+"s",
+  animationDelay:-Math.random()*25+"s",
+  opacity:String(.2+Math.random()*.45)
+ });
+ el.style.setProperty("--r",((Math.random()*2-1)*540)+"deg");
+ blocks.appendChild(el);
 }
 
-inp.addEventListener("input",validateForm);
-webhook.addEventListener("input",validateForm);
+// Theme toggle.
+$("themeBtn").addEventListener("click",()=>{
+ const root=document.documentElement;
+ root.dataset.theme=root.dataset.theme==="dark"?"light":"dark";
+});
 
-document.getElementById("clear").onclick=()=>{inp.value="";webhook.value="";validateForm();inp.focus()};
-document.getElementById("paste-btn").onclick=async()=>{
- try{inp.value=await navigator.clipboard.readText();validateForm()}catch(e){inp.focus();}};
-
-function closeErrorModal(){
- errorModal.classList.remove("active");
- go.disabled=false;
- go.textContent="Execute Pipeline";
+// Interactive headline.
+const headline=$("headline"),letters=[];
+const original="Copy clothing.";
+headline.textContent="";
+headline.setAttribute("aria-label",original);
+[...original].forEach((char,i)=>{
+ if(char===" "){headline.appendChild(document.createTextNode(" "));return;}
+ const el=document.createElement("span");
+ el.textContent=char;
+ el.setAttribute("aria-hidden","true");
+ if(i>=5)el.classList.add("hot");
+ headline.appendChild(el);
+ letters.push(el);
+});
+let px=-9999,py=-9999,frame=0;
+addEventListener("pointermove",e=>{px=e.clientX;py=e.clientY},{passive:true});
+if(!matchMedia("(prefers-reduced-motion: reduce)").matches){
+ (function animate(t){
+  if(++frame%2===0)letters.forEach((el,i)=>{
+   const r=el.getBoundingClientRect();
+   const d=Math.hypot(px-r.left-r.width/2,py-r.top-r.height/2);
+   el.style.fontWeight=Math.round(350+550*clamp(1-d/280,0,1));
+  });
+  requestAnimationFrame(animate);
+ })(0);
 }
 
-go.onclick=async ()=>{
+// Scroll animation.
+const tutorial=$("tutorial"),screen=$("screen"),caption=$("vcap");
+function onScroll(){
+ const r=tutorial.getBoundingClientRect();
+ const p=clamp(-r.top/Math.max(1,r.height-innerHeight),0,1);
+ const g=clamp(p/.55,0,1),c=clamp((p-.8)/.15,0,1);
+ screen.style.transform=`scale(${.55+.45*g})`;
+ screen.style.borderRadius=(30-24*g)+"px";
+ caption.style.opacity=c;
+ caption.style.transform=`translateY(${(1-c)*18}px)`;
+}
+addEventListener("scroll",onScroll,{passive:true});
+addEventListener("resize",onScroll);
+onScroll();
+
+// Validate public Roblox asset IDs/catalog links.
+function parseAsset(value){
+ const text=value.trim();
+ if(/^\d{1,20}$/.test(text))return text;
+ try{
+  const url=new URL(text);
+  if(!["roblox.com","www.roblox.com","m.roblox.com"].includes(url.hostname.toLowerCase()))return null;
+  const match=url.pathname.match(/^\/catalog\/(\d+)(?:\/|$)/i);
+  return match?match[1]:null;
+ }catch{return null;}
+}
+
+function validate(){
+ const value=inp.value.trim(),assetId=parseAsset(value);
+ $("count").textContent=inp.value.length+(inp.value.length===1?" char":" chars");
+ const valid=Boolean(assetId);
+ stat.classList.toggle("warn",value.length>0&&!valid);
+ $("st1").textContent=valid?"Asset input verified":value?"Invalid asset input":"Waiting for input";
+ $("st2").textContent=valid?"Ready to submit for authorized processing.":"Enter a numeric asset ID or valid Roblox catalog URL.";
+ ready.classList.toggle("ok",valid);
+ $("rtxt").textContent=valid?"Ready to process asset":"Enter a valid asset ID or link";
+ $("cardStatus").textContent=valid?"VALID":"READY";
+ go.disabled=!valid||busy;
+ return valid?assetId:null;
+}
+inp.addEventListener("input",validate);
+
+$("clearBtn").addEventListener("click",()=>{
+ if(busy)return;
+ inp.value="";
+ validate();
+ inp.focus();
+});
+
+$("pasteBtn").addEventListener("click",async()=>{
+ if(busy)return;
+ try{
+  inp.value=await navigator.clipboard.readText();
+  validate();
+ }catch{
+  showResult("Clipboard unavailable","Clipboard access was denied. Paste your asset ID or link manually.");
+ }
+});
+
+function openModal(modal){
+ previousFocus=document.activeElement;
+ modal.classList.add("active");
+ modal.setAttribute("aria-hidden","false");
+ const btn=modal.querySelector("button");
+ if(btn)btn.focus();
+}
+function closeModal(modal){
+ modal.classList.remove("active");
+ modal.setAttribute("aria-hidden","true");
+ if(previousFocus&&typeof previousFocus.focus==="function")previousFocus.focus();
+}
+function setProgress(n,message){
+ $("progressBar").style.width=n+"%";
+ $("progressPct").textContent=n+"%";
+ $("loadingStatus").textContent=message;
+}
+function showResult(title,message){
+ $("resultTitle").textContent=title;
+ $("resultMessage").textContent=message;
+ openModal(resultModal);
+}
+
+$("closeResult").addEventListener("click",()=>{
+ closeModal(resultModal);
+ validate();
+});
+
+// Real backend request; no fabricated success.
+go.addEventListener("click",async()=>{
+ const assetId=validate();
+ if(!assetId||busy)return;
+
+ busy=true;
  go.disabled=true;
- loadingModal.classList.add("active");
- progressBar.style.width="20%";
- progressPct.textContent="20%";
- loadingStatus.textContent="Connecting to proxy tunnel...";
+ go.textContent="Processing…";
+ $("cardStatus").textContent="WORKING";
+ setProgress(10,"Preparing asset request…");
+ openModal(loadingModal);
 
- setTimeout(()=>{
-  progressBar.style.width="60%";
-  progressPct.textContent="60%";
-  loadingStatus.textContent="Executing pipeline & sending payload to webhook...";
- }, 900);
+ try{
+  setProgress(35,"Contacting processing server…");
+  const response=await fetch("/api/process",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({assetId}),
+   signal:AbortSignal.timeout(30000)
+  });
 
- setTimeout(async ()=>{
-  try {
-   // Actual webhook dispatch call from frontend to Discord
-   await fetch(webhook.value.trim(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-     content: "🚀 **RBXDEV Pipeline Triggered**\nInput data received from web client successfully."
-    })
-   }).catch(()=>{});
-  } catch(e){}
+  setProgress(80,"Checking server response…");
+  let result={};
+  try{result=await response.json();}catch{}
+  closeModal(loadingModal);
 
-  progressBar.style.width="100%";
-  progressPct.textContent="100%";
-  loadingStatus.textContent="Complete!";
-  
-  setTimeout(()=>{
-   loadingModal.classList.remove("active");
-   // Triggering the requested traffic alert error modal simulation
-   errorModal.classList.add("active");
-  }, 500);
- }, 2000);
-};
+  if(!response.ok){
+   const messages={
+    400:"Invalid asset input. Check the ID and try again.",
+    401:"Authentication is required by the processing service.",
+    403:"You are not authorized to process this asset.",
+    404:"The /api/process backend endpoint has not been configured.",
+    429:"The service is busy. Please wait before trying again."
+   };
+   showResult("Request failed",messages[response.status]||`Server returned HTTP ${response.status}.`);
+  }else if(result.success===true){
+   setProgress(100,"Complete");
+   showResult("Request completed",result.message||"The server confirmed that the operation completed.");
+  }else{
+   showResult("Request received",result.message||"The server did not confirm successful processing.");
+  }
+ }catch(error){
+  closeModal(loadingModal);
+  showResult("Connection error",error.name==="TimeoutError"
+   ?"The server timed out. Try again later."
+   :"Could not reach /api/process. Check your server and endpoint configuration.");
+ }finally{
+  busy=false;
+  go.textContent="Process Asset →";
+  $("cardStatus").textContent="READY";
+  validate();
+ }
+});
+
+addEventListener("keydown",e=>{
+ if(e.key==="Escape"&&resultModal.classList.contains("active"))closeModal(resultModal);
+});
+validate();
+})();
 </script>
 </body>
 </html>
