@@ -11,6 +11,11 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Serve frontend static files
 app.use(express.static(path.join(__dirname)));
 
+// Explicit root route handler to serve index.html
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 app.post('/api/process', (req, res) => {
     const { data, webhook } = req.body;
 
