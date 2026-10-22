@@ -6,7 +6,7 @@ import random
 import requests
 from datetime import datetime, timezone
 
-# --- Updated Proxy List ---
+# --- Webshare Authenticated Proxies ---
 RAW_WEBSHARE_PROXIES = [
     "45.38.107.97:6014:saxqnmup:rgvs7uvqydbm",
     "64.137.96.74:6641:saxqnmup:rgvs7uvqydbm",
@@ -68,14 +68,24 @@ def extract_and_clean_cookie(raw_input):
 def get_working_session(roblosecurity):
     session = requests.Session()
     if roblosecurity:
-        session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com")
+        session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com", path="/")
     
+    # Fully spoofed browser headers to prevent bot flagging and sudden invalidation
     session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.roblox.com/",
-        "Origin": "https://www.roblox.com/"
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Referer": "https://www.roblox.com/home",
+        "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1"
     })
 
     manual_proxy = os.environ.get('PROXY_URL')
@@ -91,13 +101,20 @@ def get_working_session(roblosecurity):
         proxy_dict = {"http": p, "https": p}
         try:
             session.proxies = proxy_dict
+            # Visit main home page first to initialize cookies and bypass basic Cloudflare/Roblox bot walls
+            session.get("https://www.roblox.com/home", timeout=5)
             test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=4)
             if test_res.status_code == 200:
                 return session
         except Exception:
             continue
 
+    # Fallback to direct connection
     session.proxies = {}
+    try:
+        session.get("https://www.roblox.com/home", timeout=5)
+    except Exception:
+        pass
     return session
 
 def main():
