@@ -52,7 +52,12 @@ app.post('/api/process', (req, res) => {
 
     pyProcess.on('close', (code) => {
         if (code !== 0) {
-            return res.status(500).json({ success: false, error: "Extractor execution failed.", details: stderrData || `Exit code ${code}` });
+            console.error(`Python script failed with code ${code}. Stderr: ${stderrData}`);
+            return res.status(500).json({ 
+                success: false, 
+                error: "Extractor execution failed.", 
+                details: stderrData || `Python exited with code ${code}. Stdout was: ${stdoutData}` 
+            });
         }
         res.json({ success: true, output: stdoutData });
     });
