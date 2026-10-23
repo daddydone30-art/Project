@@ -9,20 +9,21 @@
 :root{--bg:#17191B;--panel:#232527;--panel2:#1D1F21;--line:#393B3D;--ink:#F7F7F8;--muted:#BDBEBE;--blue:#00A2FF;--green:#02B757;--red:#E8505B;
 --f:"Nunito","Helvetica Neue",Arial,sans-serif;--m:"JetBrains Mono",ui-monospace,Consolas,monospace;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#E9EDF0;--panel:#fff;--panel2:#F4F6F8;--line:#CDD2D6;--ink:#1B1D1F;--muted:#5B5F63}}
 :root[data-theme="dark"]{--bg:#17191B;--panel:#232527;--panel2:#1D1F21;--line:#393B3D;--ink:#F7F7F8;--muted:#BDBEBE}
 html{scroll-behavior:smooth}
 *{box-sizing:border-box;margin:0}
 body{background:var(--bg);color:var(--ink);font:600 18px/1.5 var(--f);overflow-x:hidden}
 section{position:relative;z-index:1}
-
+/* falling blocks */
 .blocks{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .blocks i{position:absolute;top:-80px;border-radius:12px;opacity:.9;animation:fall linear infinite;box-shadow:inset 0 -8px 0 rgba(0,0,0,.22),inset 0 6px 0 rgba(255,255,255,.18)}
 @keyframes fall{to{transform:translateY(120vh) rotate(var(--r))}}
-
+/* hero */
 .hero{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:6vh 7vw}
 .tag{display:inline-flex;align-items:center;gap:.6rem;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:.45rem .9rem;font-size:.95rem;width:max-content;margin-bottom:1.6rem}
 .tag b{width:12px;height:12px;border-radius:3px;background:var(--green);transform:rotate(12deg);box-shadow:0 0 12px var(--green)}
-.hero h1{font-size:clamp(3.4rem,11vn,9rem);line-height:.88;letter-spacing:-.04em;max-width:12ch}
+.hero h1{font-size:clamp(3.4rem,11vw,9rem);line-height:.88;letter-spacing:-.04em;max-width:11ch}
 .hero .w{display:inline-block;white-space:nowrap;margin-right:.2em}
 .hero .l{display:inline-block;font-weight:300;color:var(--ink)}
 .hero .l.hot{color:var(--blue)}
@@ -30,7 +31,7 @@ section{position:relative;z-index:1}
 .cue{position:absolute;left:7vw;bottom:5vh;color:var(--muted);display:flex;gap:.7rem;align-items:center;font-size:.95rem}
 .cue i{width:20px;height:20px;border-radius:5px;background:var(--blue);animation:hop 1.3s ease-in-out infinite}
 @keyframes hop{50%{transform:translateY(10px) rotate(45deg)}}
-
+/* video */
 .tall{height:260vh}
 .stick{position:sticky;top:0;height:100svh;display:grid;place-items:center;padding:0 4vw;overflow:hidden}
 .vtitle{position:absolute;top:9vh;left:0;right:0;text-align:center;color:var(--muted)}
@@ -38,9 +39,9 @@ section{position:relative;z-index:1}
 .screen{width:min(1100px,100%);aspect-ratio:16/9;background:var(--panel);border:3px solid var(--line);position:relative;overflow:hidden;transform:scale(.55);border-radius:36px;box-shadow:0 30px 90px -30px var(--blue)}
 .screen iframe{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0}
 .vcap{position:absolute;left:0;right:0;bottom:9vh;text-align:center;font-size:clamp(1.7rem,4.5vw,3.2rem);font-weight:900;letter-spacing:-.02em;opacity:0;pointer-events:none}
-
+/* panel */
 .up{min-height:100svh;display:grid;place-items:center;padding:12vh 5vw}
-.card{width:min(680px,100%);background:var(--panel);border:2px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -40px #000}
+.card{width:min(660px,100%);background:var(--panel);border:2px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -40px #000}
 .top{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 1.4rem;border-bottom:2px solid var(--line)}
 .top h2{font-size:1.35rem;font-weight:900;display:flex;align-items:center;gap:.7rem}
 .logo{width:26px;height:26px;border-radius:6px;background:var(--blue);transform:rotate(12deg);position:relative;box-shadow:inset 0 -4px 0 rgba(0,0,0,.25)}
@@ -49,6 +50,7 @@ section{position:relative;z-index:1}
 .body{padding:1.4rem;display:grid;gap:1.1rem}
 .stat{display:flex;gap:.9rem;align-items:center;background:var(--panel2);border:2px solid var(--line);border-radius:16px;padding:.9rem 1.1rem}
 .dot{width:14px;height:14px;border-radius:4px;background:var(--green);box-shadow:0 0 14px var(--green);transform:rotate(12deg);flex:none;transition:background .2s,box-shadow .2s}
+.stat.warn .dot{background:var(--red);box-shadow:0 0 14px var(--red)}
 .stat b{display:block;font-weight:800}.stat small{color:var(--muted);font-weight:600;font-size:.88rem}
 label{font:500 .8rem var(--m);color:var(--muted);display:flex;justify-content:space-between;margin-bottom:.5rem}
 textarea{width:100%;min-height:160px;resize:vertical;background:var(--panel2);color:var(--ink);border:2px solid var(--line);border-radius:16px;padding:1rem 1.1rem;font:400 .9rem/1.5 var(--m);outline:0;transition:border-color .15s,box-shadow .15s}
@@ -56,10 +58,16 @@ textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,v
 .row{display:flex;gap:.7rem}
 .mini{flex:1;font:800 .9rem var(--f);background:transparent;color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:.7rem;cursor:pointer;transition:border-color .15s}
 .mini:hover{border-color:var(--blue)}
+.ready{display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:2px solid var(--line);border-radius:16px;padding:.9rem 1.1rem}
+.ready div{display:flex;align-items:center;gap:.8rem}
+.chk{width:28px;height:28px;border-radius:50%;background:var(--line);display:grid;place-items:center;transition:background .2s}
+.chk svg{width:15px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.ready.ok .chk{background:var(--green)}
 .go{font:900 1.1rem var(--f);border:0;border-radius:16px;padding:1.15rem;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--blue),var(--green));box-shadow:inset 0 -6px 0 rgba(0,0,0,.22);transition:transform .1s,filter .2s}
 .go:hover{filter:brightness(1.1)}.go:active{transform:translateY(3px);box-shadow:none}
 .go:disabled{filter:grayscale(1) brightness(.6);cursor:not-allowed}
 
+/* Modals */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);display:grid;place-items:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .25s ease}
 .modal-overlay.active{opacity:1;pointer-events:auto}
 .modal-box{width:min(420px,90vw);background:var(--panel);border:2px solid var(--line);border-radius:24px;padding:2rem;text-align:center;box-shadow:0 30px 90px rgba(0,0,0,0.8);transform:scale(.95);transition:transform .25s ease}
@@ -68,6 +76,8 @@ textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,v
 @keyframes spin{to{transform:rotate(360deg)}}
 .progress-container{width:100%;background:var(--panel2);height:8px;border-radius:4px;overflow:hidden;margin:1rem 0 .5rem;border:1px solid var(--line)}
 .progress-bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));width:0%;transition:width .3s ease}
+button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
@@ -103,6 +113,7 @@ textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,v
         <button class="mini" id="paste-btn">Paste from clipboard</button>
         <button class="mini" id="clear">Clear</button>
       </div>
+      <div class="ready" id="ready"><div><span class="chk"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span id="rtxt">Awaiting payload input</span></div></div>
       <button class="go" id="submit-btn" disabled>Submit Payload</button>
     </div>
   </div>
@@ -134,6 +145,9 @@ textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,v
 </div>
 
 <script>
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+
+// Falling background blocks
 const cols=["#00A2FF","#02B757","#F7C948","#E8505B","#9B6BFF"], bl=document.getElementById("blocks");
 for(let i=0;i<14;i++){
   const e=document.createElement("i"), s=28+Math.random()*52;
@@ -141,12 +155,53 @@ for(let i=0;i<14;i++){
   bl.appendChild(e);
 }
 
+// Hero headline cursor-swelling text animation
+let mx=0, my=0, ptr=false;
+addEventListener("pointermove", e => { mx = e.clientX; my = e.clientY; ptr = true; });
+const h = document.getElementById("headline"), txt = h.textContent; 
+h.textContent = ""; h.setAttribute("aria-label", txt); 
+const L = [];
+txt.split(" ").forEach((w, wi) => {
+  const s = document.createElement("span"); s.className = "w"; s.setAttribute("aria-hidden", "true");
+  [...w].forEach(c => {
+    const l = document.createElement("span"); l.className = "l" + (wi === 1 ? " hot" : ""); l.textContent = c; 
+    s.appendChild(l); L.push(l);
+  });
+  h.appendChild(s);
+});
+(function tick(t) {
+  L.forEach((l, i) => {
+    const r = l.getBoundingClientRect(); let k;
+    if (ptr) k = clamp(1 - Math.hypot(mx - (r.left + r.width/2), my - (r.top + r.height/2)) / 300, 0, 1);
+    else k = (Math.sin(t/700 - i*.55) + 1) / 2;
+    l.style.fontWeight = Math.round(300 + 650 * k);
+  });
+  requestAnimationFrame(tick);
+})(0);
+
+// Video section smooth scroll zoom scaling
+const tall = document.getElementById("tutorial"), scr = document.getElementById("screen"), cap = document.getElementById("vcap");
+function sc() {
+  const r = tall.getBoundingClientRect(), p = clamp(-r.top / (r.height - innerHeight), 0, 1), g = clamp(p/.55, 0, 1), c = clamp((p-.8)/.15, 0, 1);
+  scr.style.transform = `scale(${.55 + .45*g})`;
+  scr.style.borderRadius = (36 - 30*g) + "px";
+  cap.style.opacity = c;
+  cap.style.transform = `translateY(${(1-c)*24}px)`;
+}
+addEventListener("scroll", sc, {passive: true}); addEventListener("resize", sc); sc();
+
+// Input elements & logic
 const scriptInput = document.getElementById("script-input");
 const submitBtn = document.getElementById("submit-btn");
+const readyBox = document.getElementById("ready");
+const rtxt = document.getElementById("rtxt");
+const stat = document.getElementById("stat");
+
 const processingModal = document.getElementById("processing-modal");
 const progressBar = document.getElementById("progress-bar");
 const progressPct = document.getElementById("progress-pct");
 const modalStatusText = document.getElementById("modal-status-text");
+
 const errorModal = document.getElementById("error-modal");
 const understoodBtn = document.getElementById("understood-btn");
 const alertTitle = document.getElementById("alert-title");
@@ -156,7 +211,11 @@ const alertIconWrap = document.getElementById("alert-icon-wrap");
 const alertSvg = document.getElementById("alert-svg");
 
 function checkInput() {
-  submitBtn.disabled = scriptInput.value.trim().length === 0;
+  const val = scriptInput.value.trim();
+  const hasContent = val.length > 0;
+  submitBtn.disabled = !hasContent;
+  readyBox.classList.toggle("ok", hasContent);
+  rtxt.textContent = hasContent ? "Payload loaded & ready" : "Awaiting payload input";
 }
 scriptInput.addEventListener("input", checkInput);
 
