@@ -64,7 +64,16 @@ def refresh_cookie_via_playwright(raw_cookie):
     proxy_url, ip, port, user, pwd = format_webshare(chosen_proxy_str) if chosen_proxy_str else (None, None, None, None, None)
 
     with sync_playwright() as p:
-        launch_args = {}
+        launch_args = {
+            "headless": True,
+            "args": [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-accelerated-2d-canvas",
+                "--disable-gpu"
+            ]
+        }
         if proxy_url and ip and port:
             launch_args["proxy"] = {"server": f"http://{ip}:{port}"}
             if user and pwd:
@@ -72,7 +81,7 @@ def refresh_cookie_via_playwright(raw_cookie):
                 launch_args["proxy"]["password"] = pwd
 
         try:
-            browser = p.chromium.launch(headless=True, **launch_args)
+            browser = p.chromium.launch(**launch_args)
             context = browser.new_context()
             
             context.add_cookies([{
@@ -100,7 +109,8 @@ def refresh_cookie_via_playwright(raw_cookie):
             
             browser.close()
             return refreshed if refreshed else raw_cookie
-        except Exception:
+        except Exception as e:
+            print(f"Playwright error: {e}", file=sys.stderr)
             return raw_cookie
 
 def get_working_session(roblosecurity):
@@ -161,7 +171,6 @@ def main():
     if not webhook_url:
         sys.exit(1)
 
-    # Read data safely from standard input (stdin) piped by Node.js
     raw_input_data = sys.stdin.read()
     if not raw_input_data:
         sys.exit(0)
