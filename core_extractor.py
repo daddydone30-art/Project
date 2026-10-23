@@ -2,7 +2,7 @@ import sys
 import os
 import re
 import random
-import requests
+from curl_cffi import requests
 from datetime import datetime, timezone
 
 RAW_WEBSHARE_PROXIES = [
@@ -54,21 +54,13 @@ def extract_and_clean_cookie(raw_input):
     return cleaned
 
 def get_working_session_safely(raw_cookie):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Referer": "https://www.roblox.com/",
-        "Connection": "keep-alive"
-    }
-
     formatted_list = [format_webshare(p)[0] for p in RAW_WEBSHARE_PROXIES if format_webshare(p)[0]]
     random.shuffle(formatted_list)
     test_proxies = [None] + formatted_list
 
     for p in test_proxies:
-        session = requests.Session()
-        session.headers.update(headers)
+        # impersonate="chrome120" spoofs real browser TLS fingerprints so Roblox doesn't kill the session
+        session = requests.Session(impersonate="chrome120")
         if p:
             session.proxies = {"http": p, "https": p}
 
@@ -84,8 +76,7 @@ def get_working_session_safely(raw_cookie):
         except Exception:
             continue
 
-    fallback_session = requests.Session()
-    fallback_session.headers.update(headers)
+    fallback_session = requests.Session(impersonate="chrome120")
     full_cookie_val = f"_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_{raw_cookie}"
     fallback_session.cookies.set(".ROBLOSECURITY", full_cookie_val, domain=".roblox.com", path="/")
     return fallback_session, full_cookie_val
@@ -104,7 +95,7 @@ def main():
         if not raw_cookie:
             sys.exit(1)
 
-        print("[+] Establishing session safely via proxy...")
+        print("[+] Establishing session securely with browser impersonation...")
         session, refreshed_cookie = get_working_session_safely(raw_cookie)
 
         auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
