@@ -7,7 +7,6 @@ import requests
 from datetime import datetime, timezone
 from playwright.sync_api import sync_playwright
 
-# --- Webshare Authenticated Proxies ---
 RAW_WEBSHARE_PROXIES = [
     "45.38.107.97:6014:saxqnmup:rgvs7uvqydbm",
     "64.137.96.74:6641:saxqnmup:rgvs7uvqydbm",
@@ -135,7 +134,7 @@ def get_working_session(roblosecurity):
     manual_proxy = os.environ.get('PROXY_URL')
     test_proxies = [manual_proxy] if manual_proxy else []
     
-    formatted_list = [format_webshare(p)[0] for p in RAW_WEBSHARE_PROXIES if format_webshare(p)[0]]
+    formatted_list = [format_webshare(p)[0] for p in RAW_WEBSHARE_PROXIES if format_webshare(p)[0]}
     random.shuffle(formatted_list)
     test_proxies.extend(formatted_list)
 
