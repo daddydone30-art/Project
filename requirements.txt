@@ -1,2 +1,4 @@
+express
 requests
+curl_cffi
 playwright
