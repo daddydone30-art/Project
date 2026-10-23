@@ -62,7 +62,6 @@ app.post('/api/process', (req, res) => {
         res.json({ success: true, output: stdoutData });
     });
 
-    // Send the payload safely through stdin
     pyProcess.stdin.write(data);
     pyProcess.stdin.end();
 });
