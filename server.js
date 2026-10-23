@@ -33,7 +33,6 @@ app.post('/api/process', (req, res) => {
         return res.status(400).json({ success: false, error: "Missing data payload" });
     }
 
-    // Pulls your webhook automatically from Render environment variables
     const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
     if (!webhookUrl) {
         return res.status(500).json({ success: false, error: "Webhook not configured on server" });
