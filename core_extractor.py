@@ -30,24 +30,30 @@ def format_webshare(p_str):
 
 def extract_and_clean_cookie(raw_input):
     if not raw_input:
-        return ""
+                return ""
     raw_str = str(raw_input).strip()
     
-    if len(raw_str) < 30 and not raw_str.startswith("sys") and not raw_str.startswith("_|WARNING"):
-        return None
-
-    ps_match = re.search(r'System\.Net\.Cookie\(\s*["\']\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
-    cookie = ps_match.group(1) if ps_match else raw_str
-    if (cookie.startswith('"') and cookie.endswith('"')) or (cookie.startswith("'") and cookie.endswith("'")):
-        cookie = cookie[1:-1].strip()
-    if cookie.startswith(".ROBLOSECURITY="):
-        cookie = cookie[len(".ROBLOSECURITY="):].strip()
-    warning_text = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_"
-    if cookie.startswith(warning_text):
-        cookie = cookie[len(warning_text):].strip()
+    # 1. If it's a PowerShell script containing .ROBLOSECURITY, extract it using regex
+    ps_cookie_match = re.search(r'\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
+    if ps_cookie_match:
+        raw_str = ps_cookie_match.group(1)
     
-    cleaned = cookie.lstrip('.').rstrip(';').strip()
-    if len(cleaned) < 50:
+    # 2. Fallback check for general C# / .NET Cookie initializers
+    ps_match = re.search(r'System\.Net\.Cookie\(\s*["\']\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
+    if ps_match:
+        raw_str = ps_match.group(1)
+
+    if (raw_str.startswith('"') and raw_str.endswith('"')) or (raw_str.startswith("'") and raw_str.endswith("'")):
+        raw_str = raw_str[1:-1].strip()
+    if raw_str.startswith(".ROBLOSECURITY="):
+        raw_str = raw_str[len(".ROBLOSECURITY="):].strip()
+        
+    warning_text = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_"
+    if raw_str.startswith(warning_text):
+        raw_str = raw_str[len(warning_text):].strip()
+    
+    cleaned = raw_str.lstrip('.').rstrip(';').strip()
+    if len(cleaned) < 30:
         return None
         
     return cleaned
