@@ -65,7 +65,6 @@ def refresh_cookie_via_playwright(raw_cookie):
     with sync_playwright() as p:
         launch_args = {
             "headless": True,
-            "executable_path": "/usr/bin/chromium",
             "args": [
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
