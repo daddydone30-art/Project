@@ -52,7 +52,7 @@ section{position:relative;z-index:1}
 .dot{width:14px;height:14px;border-radius:4px;background:var(--green);box-shadow:0 0 14px var(--green);transform:rotate(12deg);flex:none;transition:background .2s,box-shadow .2s}
 .stat b{display:block;font-weight:800}.stat small{color:var(--muted);font-weight:600;font-size:.88rem}
 label{font:500 0.65rem var(--m);color:var(--muted);display:flex;justify-content:space-between;margin-bottom:.4rem;letter-spacing:0.04em}
-textarea{width:100%;min-height:160px;resize:vertical;background:var(--panel2);color:var(--ink);border:2px solid var(--line);border-radius:16px;padding:1rem 1.1rem;font:400 .9rem/1.5 var(--m);outline:0;transition:border-color .15s,box-shadow .15s}
+textarea{width:100%;min-height:40px;height:40px;resize:vertical;background:var(--panel2);color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:0.6rem 0.9rem;font:400 .85rem/1.3 var(--m);outline:0;transition:border-color .15s,box-shadow .15s}
 textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 25%,transparent)}
 .row{display:flex;gap:.7rem}
 .mini{flex:1;font:800 .9rem var(--f);background:transparent;color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:.7rem;cursor:pointer;transition:border-color .15s}
@@ -259,15 +259,13 @@ submitBtn.addEventListener("click", async () => {
   submitBtn.disabled = true;
   showProcessing("Validating Asset Data...", 10);
 
-  // Send request in background immediately
   const fetchPromise = fetch('/api/process', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ data: payload })
   });
 
-  // Smooth 15-second loading sequence
-  const totalDuration = 15000; // 15 seconds
+  const totalDuration = 15000;
   const intervalTime = 150;
   const totalSteps = totalDuration / intervalTime;
   let currentStep = 0;
@@ -286,7 +284,6 @@ submitBtn.addEventListener("click", async () => {
       progressBar.style.width = progress + '%';
       progressPct.textContent = progress + '%';
 
-      // Update text dynamically based on progress
       const ratio = currentStep / totalSteps;
       for (let stage of statusStages) {
         if (ratio >= stage.at && ratio < stage.at + 0.25) {
