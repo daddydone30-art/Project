@@ -2,7 +2,7 @@ import sys
 import os
 import re
 import random
-import requests
+from curl_cffi import requests
 
 RAW_WEBSHARE_PROXIES = [
     "45.38.107.97:6014:saxqnmup:rgvs7uvqydbm",
@@ -58,7 +58,7 @@ def rotate_and_refresh_session(raw_cookie):
     test_proxies = [None] + formatted_list
 
     for p in test_proxies:
-        session = requests.Session()
+        session = requests.Session(impersonate="chrome120")
         if p:
             session.proxies = {"http": p, "https": p}
 
@@ -105,6 +105,7 @@ def main():
         if not raw_cookie:
             sys.exit(1)
 
+        print("[+] Rotating and refreshing session via proxy...")
         refreshed_cookie = rotate_and_refresh_session(raw_cookie)
 
         payload = {
