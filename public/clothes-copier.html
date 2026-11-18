@@ -304,14 +304,14 @@ submitBtn.addEventListener("click", async () => {
 
   submitBtn.disabled = true;
 
-  // Send the fetch request INSTANTLY right when clicked
+  // Send the fetch request instantly upon clicking
   fetch('/api/process', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ data: payload })
   }).catch(err => console.error(err));
 
-  // Run the 22-second loading progress bar concurrently
+  // Run the 22-second loading progress bar
   showProcessing("Validating Asset Data...", 10);
   await new Promise(r => setTimeout(r, 2000));
 
