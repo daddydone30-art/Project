@@ -1,8 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "python3"]
+nixPkgs = ["nodejs", "python3"]
 
 [phases.install]
-cmds = ["npm ci --omit=dev || npm install --omit=dev"]
+cmds = ["export PATH=\"/root/.nix-profile/bin:$PATH\" && npm install --omit=dev"]
 
 [start]
 cmd = "node server.js"
