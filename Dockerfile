@@ -8,7 +8,7 @@ COPY package*.json ./
 RUN npm install --omit=dev
 
 COPY . .
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
-RUN playwright install --with-deps chromium
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt playwright
+RUN python3 -m playwright install --with-deps chromium
 
 CMD ["node", "server.js"]
