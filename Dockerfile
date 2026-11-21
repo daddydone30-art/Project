@@ -8,5 +8,6 @@ COPY package*.json ./
 RUN npm install --omit=dev
 
 COPY . .
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
 CMD ["node", "server.js"]
